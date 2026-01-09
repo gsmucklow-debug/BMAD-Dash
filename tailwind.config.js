@@ -7,7 +7,9 @@ module.exports = {
             colors: {
                 'bmad-dark': '#1a1a1a',
                 'bmad-gray': '#2a2a2a',
-                'bmad-accent': '#3a3a3a',
+                'bmad-accent': '#4a9eff',
+                'bmad-text': '#e0e0e0',
+                'bmad-muted': '#888888',
                 'bmad-green': '#10b981',
                 'bmad-red': '#ef4444',
                 'bmad-yellow': '#f59e0b',

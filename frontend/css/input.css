@@ -2,7 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom BMAD-specific styles */
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+@layer base {
+    body {
+        @apply bg-bmad-dark text-bmad-text;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+}
+
+@layer utilities {
+    .breadcrumb-separator {
+        @apply text-bmad-muted mx-2;
+    }
+    
+    .breadcrumb-current {
+        @apply text-bmad-accent font-semibold;
+    }
 }

@@ -3,7 +3,7 @@ story_id: "1.4"
 story_key: "1-4-frontend-shell-breadcrumb-navigation"
 epic: 1
 title: "Frontend Shell & Breadcrumb Navigation"
-status: "ready-for-dev"
+status: "done"
 created: "2026-01-09"
 context_engine_version: "v1.0"
 ---
@@ -517,12 +517,12 @@ module.exports = {
 **Dependencies:** Story 0.1, 1.3 (all complete)
 
 **Next Steps:**
-1. Update `index.html` with dark-themed structure
-2. Create `app.js` main controller with API integration
-3. Create `breadcrumb.js` component
-4. Configure Tailwind CSS with BMAD theme
-5. Add npm build scripts
-6. Create project root selector UI
-7. Write comprehensive tests
-8. Verify <500ms page load performance
+1. Update `index.html` with dark-themed structure (Completed)
+2. Create `app.js` main controller with API integration (Completed)
+3. Create `breadcrumb.js` component (Completed)
+4. Configure Tailwind CSS with BMAD theme (Completed)
+5. Add npm build scripts (Completed)
+6. Create project root selector UI (Completed)
+7. Write comprehensive tests (Completed)
+8. Verify <500ms page load performance (Completed)
 9. Move to Story 1.5 (Quick Glance Bar)
