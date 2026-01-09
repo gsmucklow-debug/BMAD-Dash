@@ -4,6 +4,7 @@
  */
 
 import { render as renderBreadcrumb } from './components/breadcrumb.js';
+import { render as renderQuickGlance } from './components/quick-glance.js';
 
 const DEFAULT_PROJECT_ROOT = 'F:/BMAD Dash';
 
@@ -25,7 +26,8 @@ async function init() {
         // Render breadcrumb navigation
         renderBreadcrumb(data.breadcrumb);
 
-        // Future: render Quick Glance (Story 1.5)
+        // Render Quick Glance (Story 1.5)
+        renderQuickGlance(data);
         // Future: render Kanban (Story 3.2)
 
         console.timeEnd('Dashboard Load Time');
@@ -113,6 +115,7 @@ async function loadProject(projectRoot) {
 
         // Render components
         renderBreadcrumb(data.breadcrumb);
+        renderQuickGlance(data);
 
         console.log('Project loaded successfully:', projectRoot);
     } catch (error) {

@@ -50,8 +50,8 @@ development_status:
   1-1-bmad-artifact-parser-data-models: done
   1-2-phase-detection-algorithm: done
   1-3-flask-api-dashboard-endpoint: done
-  1-4-frontend-shell-breadcrumb-navigation: ready-for-dev
-  1-5-quick-glance-bar-progress-indicators: backlog
+  1-4-frontend-shell-breadcrumb-navigation: done
+  1-5-quick-glance-bar-progress-indicators: ready-for-dev
   epic-1-retrospective: optional
   
   # Epic 2: Quality Validation & Trust

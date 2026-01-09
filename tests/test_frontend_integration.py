@@ -63,6 +63,12 @@ class TestFrontendServing:
         response = client.get('/js/components/breadcrumb.js')
         assert response.status_code == 200
         assert b'export function render' in response.data
+
+    def test_quick_glance_js_served(self, client):
+        """Test that quick-glance component is accessible"""
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        assert b'export function render' in response.data
     
     def test_output_css_served_after_build(self, client):
         """Test that output.css is accessible (requires build:css to be run first)"""
@@ -115,6 +121,12 @@ class TestFrontendStructure:
         response = client.get('/')
         assert response.status_code == 200
         assert b'id="breadcrumb-container"' in response.data
+
+    def test_quick_glance_container_present(self, client):
+        """Test that quick-glance container exists"""
+        response = client.get('/')
+        assert response.status_code == 200
+        assert b'id="quick-glance-container"' in response.data
     
     def test_loading_and_error_states(self, client):
         """Test that loading and error elements are present"""
