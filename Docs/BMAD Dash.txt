@@ -1,0 +1,88 @@
+## Overview
+
+### Problem Statement
+
+When returning to a BMAD project after a break (overnight, between sessions), developers lack quick cognitive orientation. They must manually re-read stories, check git history, and figure out "where was I? what did I do? what's next?" This creates cognitive friction, especially for users with MS/brain fog managing complex multi-phase projects.
+
+### Solution
+
+Build a localhost dashboard that auto-parses BMAD artifacts (epics, stories, git history) on startup, detects current state (which story was in-progress, what's completed), and uses AI to suggest the next step + recommended agent to call. Dashboard stays in browser while user works in IDE, providing quick orientation on return without leaving their workspace.
+
+The tool is assistive technology—it augments cognition without taking control away from the user. All commands are copy-paste workflow; nothing executes automatically.
+https://github.com/bmad-code-org/BMAD-METHOD
+https://github.com/bmad-code-org/BMAD-METHOD/blob/main/docs/tutorials/getting-started/images/workflow-method-greenfield.svg
+http://docs.bmad-method.org/explanation/bmm/
+http://docs.bmad-method.org/tutorials/getting-started/getting-started-bmadv6/ <--- this is the one we use NOT BMad v4
+
+### Scope
+
+**In Scope:**
+- Flask backend with file parsing (epics, stories, git history)
+- Full hierarchy display (Epics → Stories → Tasks) with drill-down
+- Git correlation (commits reference stories; file modification tracking)
+- Fast startup parse + state detection
+- Single AI analysis call on load (Gemini): "where am I?" + "next story" + "which agent to call"
+- **Interactive AI chat** for discussing project and planning changes
+- **Course correction detection**: AI suggests `bmad correct-course` workflow when detecting mid-project changes
+- Simple HTML Kanban board (TODO | IN PROGRESS | REVIEW | COMPLETE)
+- Manual refresh button for mid-session updates
+- Copy-to-clipboard for AI-suggested CLI commands
+- Dark theme UI optimized for minimal cognitive load
+- Current location display (top bar): phase, active epic/story, recent activity
+- AI coach panel (right sidebar): next step suggestion with reasoning + chat interface - Gemini 3 flash : https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-flash
+- Code review deviation detection
+- Git post-commit hooks
+- WebSocket push updates
+- Advanced filtering/search
+- Multi-project support
+- file explorer to set project folder where BMad Method is being used
+- Authentication (localhost-only, single user)
+- Desktop only
+
+## Context for Development
+
+### User Context
+
+- **User:** Gary (intermediate skill level, MS + occasional brain fog)
+- **Workflow:** Primarily in IDE (VSCode or Google Antigravity), rarely opens terminal
+- **Primary Use Case:** Return to project after break → quickly understand where they left off + get oriented on next steps
+- **Pain Points:**
+  - A) Losing track of project phase/current focus
+  - B) Forgetting which tasks were in-progress
+  - C) Not knowing which BMAD agent/command to run next
+
+### Project Context
+
+- **Reference Project:** Echo-OS (F:\Echo-OS)
+- **BMAD Structure:** Uses standard BMAD artifacts:
+  - `_bmad/` folder: configuration, agents, workflows
+  - `_bmad-output/planning-artifacts/`: epics.md, prd.md, architecture.md
+  - `_bmad-output/implementation-artifacts/stories/`: story-N-M-*.md files with status + tasks
+  - Git commits reference stories (e.g., `feat(story-1.3): ...`)
+  - Story files contain `Status: done/in-progress/todo` + task checkboxes
+- **Strict Mode:** Dashboard requires well-formed BMAD artifacts; won't work with incomplete project structures
+
+### Phase Detection Algorithm
+
+**How to determine current BMAD phase from artifacts:**
+
+1. **Check for `sprint-status.yaml`** in `_bmad-output/implementation-artifacts/`:
+   - If exists → **Phase 4: Implementation**
+
+2. **Check `epics.md` frontmatter** for `stepsCompleted` array:
+   - Contains `'create-epics-and-stories'` → **Phase 3: Solutioning** (minimum)
+   - Contains `'create-architecture'` → **Phase 2: Planning** (minimum)
+   - Contains `'create-prd'` → **Phase 1: Analysis** (minimum)
+
+3. **Check for story files** in `_bmad-output/implementation-artifacts/stories/`:
+   - If directory exists and has `*.md` files → **Phase 3+** (Solutioning or Implementation)
+
+4. **Check for planning artifacts** in `_bmad-output/planning-artifacts/`:
+   - If `epics.md` exists → **Phase 2+** (Planning or later)
+   - If `architecture.md` exists → **Phase 2+**
+   - If `prd.md` exists → **Phase 1+**
+
+5. **Default:** If no artifacts found → **"Unknown"** (suggest running `workflow-status`)
+
+**Priority:** Higher-numbered phases override lower ones (if both sprint-status.yaml and epics.md exist, return Phase 4).
+

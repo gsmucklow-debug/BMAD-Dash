@@ -1,0 +1,12 @@
+{
+  "name": "bmad-dash",
+  "version": "1.0.0",
+  "description": "AI Agent Orchestration Auditor for BMAD Method projects",
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/css/input.css -o ./frontend/css/output.css --minify",
+    "watch:css": "tailwindcss -i ./frontend/css/input.css -o ./frontend/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
