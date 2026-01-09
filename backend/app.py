@@ -17,8 +17,23 @@ def create_app():
     # Configuration
     app.config['GEMINI_API_KEY'] = os.getenv('GEMINI_API_KEY')
     
-    # Register blueprints (will be added in later stories)
-    # from backend.api import dashboard, git_evidence, test_evidence, ai_chat, refresh
+    # JSON configuration
+    app.config['JSON_AS_ASCII'] = False  # Allow Unicode in JSON responses
+    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True  # Pretty print in debug mode
+    
+    # Logging configuration
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Register blueprints
+    from backend.api.dashboard import dashboard_bp
+    app.register_blueprint(dashboard_bp)
+    
+    # Register other blueprints (will be added in later stories)
+    # from backend.api import git_evidence, test_evidence, ai_chat, refresh
     
     @app.route('/')
     def index():
