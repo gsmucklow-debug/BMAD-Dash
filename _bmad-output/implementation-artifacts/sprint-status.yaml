@@ -63,14 +63,14 @@ development_status:
   epic-2-retrospective: optional
   
   # Epic 3: Multi-View Dashboard
-  epic-3: in-progress
+  epic-3: done
   3-1-hash-based-router-view-mode-switching: done
   3-2-kanban-board-timeline-view: done
   3-3-minimal-list-view-manual-refresh: done
   epic-3-retrospective: optional
   
   # Epic 4: Zero-Friction Execution
-  epic-4: backlog
+  epic-4: in-progress
   4-1-three-layer-action-card-one-click-command-copy: backlog
   4-2-workflow-history-gap-detection: backlog
   epic-4-retrospective: optional

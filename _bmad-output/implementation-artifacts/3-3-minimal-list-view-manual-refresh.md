@@ -3,6 +3,7 @@ story_id: "3.3"
 title: "Minimal List View & Manual Refresh"
 epic: "epic-3"
 status: done
+completed: "2026-01-10"
 last_updated: "2026-01-10"
 ---
 
