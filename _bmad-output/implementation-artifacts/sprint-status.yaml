@@ -55,8 +55,8 @@ development_status:
   epic-1-retrospective: optional
   
   # Epic 2: Quality Validation & Trust
-  epic-2: backlog
-  2-1-git-correlation-engine: backlog
+  epic-2: in-progress
+  2-1-git-correlation-engine: ready-for-dev
   2-2-test-discovery-result-parsing: backlog
   2-3-evidence-api-endpoints: backlog
   2-4-evidence-badges-expandable-modals: backlog
