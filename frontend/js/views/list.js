@@ -25,8 +25,12 @@ export function render(data) {
     const currentTask = currentStory?.current_task || 'No active task';
     const storyTitle = currentStory?.title || 'No Active Story';
 
-    // Get next command from action card or provide default
-    const nextCommand = data.action_card?.command || '/bmad-bmm-workflows-dev-story';
+    // Get next command from action card or provide smart default based on state
+    // If no active story, suggest creating the next story; otherwise suggest dev-story
+    let nextCommand = data.action_card?.command;
+    if (!nextCommand) {
+        nextCommand = currentStory ? '/bmad-bmm-workflows-dev-story' : '/bmad-bmm-workflows-create-story';
+    }
 
     // Render minimal UI - exactly 3 information items
     container.innerHTML = `
