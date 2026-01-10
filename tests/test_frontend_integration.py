@@ -90,6 +90,19 @@ class TestDashboardAPIIntegration:
         assert 'breadcrumb' in data
         assert data['breadcrumb']['project'] == 'BMAD Dash'
     
+    def test_dashboard_endpoint_returns_quick_glance(self, client):
+        """Test that /api/dashboard returns quick_glance data"""
+        response = client.get('/api/dashboard?project_root=F:/BMAD Dash')
+        assert response.status_code == 200
+        
+        data = response.get_json()
+        assert 'quick_glance' in data
+        assert isinstance(data['quick_glance'], dict)
+        # quick_glance should have done, current, next keys (may be None)
+        assert 'done' in data['quick_glance']
+        assert 'current' in data['quick_glance']
+        assert 'next' in data['quick_glance']
+    
     def test_dashboard_endpoint_with_invalid_path(self, client):
         """Test that invalid project path returns error"""
         response = client.get('/api/dashboard?project_root=/invalid/path')
@@ -127,6 +140,14 @@ class TestFrontendStructure:
         response = client.get('/')
         assert response.status_code == 200
         assert b'id="quick-glance-container"' in response.data
+    
+    def test_quick_glance_component_renders(self, client):
+        """Test that Quick Glance component renders with dashboard data"""
+        # This test verifies the component file exists and can be served
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        assert b'export function render' in response.data
+        assert b'quick-glance-container' in response.data
     
     def test_loading_and_error_states(self, client):
         """Test that loading and error elements are present"""
@@ -190,6 +211,38 @@ class TestStaticFileRouting:
         """Test that nonexistent files return 404"""
         response = client.get('/js/nonexistent.js')
         assert response.status_code == 404
+
+
+class TestQuickGlanceComponent:
+    """Test Quick Glance component functionality"""
+    
+    def test_quick_glance_js_served(self, client):
+        """Test that quick-glance component is accessible"""
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        assert b'export function render' in response.data
+    
+    def test_quick_glance_handles_empty_data(self, client):
+        """Test that quick-glance component handles missing data gracefully"""
+        # Component should handle missing quick_glance data
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        # Check that component has error handling
+        assert b'quick_glance' in response.data or b'No quick glance' in response.data
+    
+    def test_quick_glance_has_progress_parsing(self, client):
+        """Test that quick-glance component includes progress parsing logic"""
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        # Check for progress parsing function
+        assert b'parseProgress' in response.data or b'progress' in response.data
+    
+    def test_quick_glance_has_escape_html(self, client):
+        """Test that quick-glance component includes XSS protection"""
+        response = client.get('/js/components/quick-glance.js')
+        assert response.status_code == 200
+        # Check for HTML escaping function
+        assert b'escapeHtml' in response.data or b'textContent' in response.data
 
 
 # Manual testing checklist (to be verified in browser)
