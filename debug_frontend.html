@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMAD Dash - Debug</title>
+    <link href="/css/output.css" rel="stylesheet">
+    <style>
+        /* Fallback styles if Tailwind isn't loading */
+        body { 
+            background-color: #1a1a1a; 
+            color: #e5e5e5; 
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin-bottom: 20px; padding: 15px; background: #2a2a2a; border-radius: 8px; }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BMAD Dash - Frontend Debug</h1>
+        
+        <div class="section">
+            <h2>CSS Loading Check</h2>
+            <p id="css-status">Checking...</p>
+        </div>
+        
+        <div class="section">
+            <h2>JavaScript Loading Check</h2>
+            <p id="js-status">Checking...</p>
+        </div>
+        
+        <div class="section">
+            <h2>API Test</h2>
+            <button onclick="testAPI()">Test Dashboard API</button>
+            <pre id="api-result"></pre>
+        </div>
+        
+        <div class="section">
+            <h2>Expected Structure</h2>
+            <p>You should see:</p>
+            <ol>
+                <li>Project Root input field with "Load Project" button</li>
+                <li>Breadcrumb navigation (Project → Phase → Epic → Story)</li>
+                <li>Quick Glance bar (Last Completed → Current → Up Next)</li>
+                <li>Main content area</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Check CSS
+        const cssLink = document.querySelector('link[href="/css/output.css"]');
+        if (cssLink) {
+            cssLink.onload = () => {
+                document.getElementById('css-status').innerHTML = '<span class="success">✓ CSS loaded</span>';
+            };
+            cssLink.onerror = () => {
+                document.getElementById('css-status').innerHTML = '<span class="error">✗ CSS failed to load</span>';
+            };
+        }
+        
+        // Check JS
+        if (typeof fetch !== 'undefined') {
+            document.getElementById('js-status').innerHTML = '<span class="success">✓ JavaScript is working</span>';
+        } else {
+            document.getElementById('js-status').innerHTML = '<span class="error">✗ JavaScript not working</span>';
+        }
+        
+        // Test API
+        async function testAPI() {
+            const resultEl = document.getElementById('api-result');
+            resultEl.textContent = 'Testing...';
+            try {
+                const projectRoot = 'F:/BMAD Dash';
+                const url = `/api/dashboard?project_root=${encodeURIComponent(projectRoot)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                resultEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

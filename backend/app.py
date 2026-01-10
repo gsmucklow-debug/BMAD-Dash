@@ -1,7 +1,7 @@
 """
 BMAD Dash - Flask Application Entry Point
 """
-from flask import Flask
+from flask import Flask, request
 from dotenv import load_dotenv
 import os
 
@@ -36,12 +36,23 @@ def create_app():
     from backend.api.git_evidence import git_evidence_bp
     app.register_blueprint(git_evidence_bp)
     
+    # Register Test evidence blueprint (Story 2.3)
+    from backend.api.test_evidence import test_evidence_bp
+    app.register_blueprint(test_evidence_bp)
+    
     # Register other blueprints (will be added in later stories)
-    # from backend.api import test_evidence, ai_chat, refresh
+    # from backend.api import ai_chat, refresh
     
     @app.route('/')
     def index():
         return app.send_static_file('index.html')
+    
+    # Ensure CSS files are served with correct Content-Type
+    @app.after_request
+    def set_css_content_type(response):
+        if response.content_type == 'application/octet-stream' and request.path.endswith('.css'):
+            response.content_type = 'text/css'
+        return response
     
     return app
 
