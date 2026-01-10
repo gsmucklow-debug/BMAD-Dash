@@ -4,6 +4,9 @@
  * with progress indicators for the current story
  */
 
+// Constants
+const CONTAINER_ID = 'quick-glance-container';
+
 /**
  * Render Quick Glance bar
  * @param {Object} data - Dashboard data from API
@@ -11,14 +14,15 @@
  * @param {Object} data.project - Project metadata (optional)
  */
 export function render(data) {
-    const container = document.getElementById('quick-glance-container');
+    const container = document.getElementById(CONTAINER_ID);
 
     if (!data || !data.quick_glance) {
         container.innerHTML = '<p class="text-bmad-muted text-sm">No quick glance data available</p>';
         return;
     }
 
-    const { done, current, next } = data.quick_glance;
+    // Safely destructure with defaults
+    const { done = null, current = null, next = null } = data.quick_glance || {};
 
     // Handle empty state (no current story)
     if (!current) {
@@ -172,11 +176,19 @@ function parseProgress(progressStr) {
     const completed = parseInt(match[1], 10);
     const total = parseInt(match[2], 10);
 
+    // Validate numbers
+    if (isNaN(completed) || isNaN(total) || completed < 0 || total < 0) {
+        return null;
+    }
+
     if (total === 0) {
         return { percentage: 0, completed: 0, total: 0 };
     }
 
-    const percentage = Math.round((completed / total) * 100);
+    // Calculate percentage with bounds checking (0-100%)
+    const rawPercentage = (completed / total) * 100;
+    const percentage = Math.min(100, Math.max(0, Math.round(rawPercentage)));
+    
     return { percentage, completed, total };
 }
 
