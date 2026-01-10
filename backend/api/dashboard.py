@@ -276,7 +276,8 @@ def build_quick_glance(project) -> Dict[str, Any]:
         all_stories.extend(epic.stories)
     
     # Find done story (last completed)
-    done_stories = [s for s in all_stories if s.status == "done" and s.completed]
+    # Include done stories regardless of whether they have a completed date
+    done_stories = [s for s in all_stories if s.status == "done"]
     if done_stories:
         # Sort by completion date (most recent first), then by story_id (highest first) as tiebreaker
         def sort_key(story):
@@ -290,13 +291,16 @@ def build_quick_glance(project) -> Dict[str, Any]:
                 story_tuple = (0, 0)
             
             # Key priority:
-            # 1. Completion Date (if exists)
+            # 1. Completion Date (if exists), else last_updated (if exists), else "0000-00-00"
             # 2. Epic Number
             # 3. Story Number
-            # Use '0000-00-00' for missing dates so they sort last if reverse=True, 
-            # BUT we actually want "done" stories without dates to potentially be recent if date was just missed.
-            # A safer bet is: if date is missing, rely on story_id (assuming higher IDs are newer).
-            date_val = story.completed if story.completed else "0000-00-00"
+            # Use last_updated as fallback for missing completed dates
+            if story.completed:
+                date_val = story.completed
+            elif hasattr(story, 'last_updated') and story.last_updated:
+                date_val = story.last_updated
+            else:
+                date_val = "0000-00-00"
             
             return (date_val, story_tuple)
         

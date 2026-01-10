@@ -3,6 +3,7 @@ story_id: "4.2"
 title: "Workflow History & Gap Detection"
 epic: "epic-4"
 status: "done"
+completed: "2026-01-10"
 last_updated: "2026-01-10"
 ---
 
