@@ -3,8 +3,9 @@ story_id: "2.1"
 story_key: "2-1-git-correlation-engine"
 epic: 2
 title: "Git Correlation Engine"
-status: "ready-for-dev"
+status: "done"
 created: "2026-01-10"
+completed: "2026-01-10"
 context_engine_version: "v1.0"
 ---
 
@@ -42,6 +43,16 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 ## Implementation Tasks
 
 ### Task 1: Implement GitCorrelator.get_commits_for_story() Method
+- [x] Task 1 (All ACs)
+  - [x] Complete the GitCorrelator class in backend/services/git_correlator.py
+  - [x] Use GitPython library for Git operations
+  - [x] Initialize GitPython Repo object in __init__
+  - [x] Implement get_commits_for_story() method with pattern matching
+  - [x] Extract commit data (sha, message, author, timestamp, files_changed)
+  - [x] Handle exceptions gracefully
+  - [x] Return list of GitCommit dataclass instances
+
+### Task 1 (ORIGINAL SPEC): Implement GitCorrelator.get_commits_for_story() Method
 **Implementation Details:**
 - Complete the `GitCorrelator` class in `backend/services/git_correlator.py`
 - Use GitPython library (already in requirements.txt: GitPython>=3.1.40)
@@ -66,6 +77,12 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - Performance: <100ms for typical repository (<1000 commits)
 
 ### Task 2: Add Status Calculation Logic
+- [x] Task 2 (All ACs)
+  - [x] Add calculate_status() method to GitCorrelator
+  - [x] Implement green/yellow/red status logic based on commit age
+  - [x] Add get_last_commit_time() helper method
+  - [x] Use datetime utilities for age calculation
+
 **Implementation Details:**
 - Add `calculate_status()` method to GitCorrelator:
   - Input: list of GitCommit objects
@@ -85,6 +102,13 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - Handles commits older than 7 days (returns "yellow")
 
 ### Task 3: Implement Story ID Pattern Matching
+- [x] Task 3 (All ACs)
+  - [x] Create _build_story_patterns() method
+  - [x] Generate regex patterns for various commit message formats
+  - [x] Implement case-insensitive matching
+  - [x] Create _matches_story() helper method
+  - [x] Test with various commit message formats
+
 **Implementation Details:**
 - Create `_build_story_patterns(story_id: str)` private method:
   - Parse story_id to extract epic.story format
@@ -105,6 +129,16 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - Handles edge cases (empty message, special characters)
 
 ### Task 4: Integrate GitCorrelator into Git Evidence API
+- [x] Task 4 (All ACs)
+  - [x] Update backend/api/git_evidence.py with GitCorrelator integration
+  - [x] Extract project_root from query parameters
+  - [x] Call get_commits_for_story() and calculate_status()
+  - [x] Build GitEvidence dataclass and return JSON
+  - [x] Add error handling (400, 404, 500 responses)
+  - [x] Register blueprint in Flask app
+  - [x] Verify response format matches API contract
+  - [x] Write integration tests (6 tests passing)
+
 **Implementation Details:**
 - Update `backend/api/git_evidence.py`:
   - Import GitCorrelator from `backend.services.git_correlator`
@@ -136,6 +170,14 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - Response time <100ms (NFR5 requirement)
 
 ### Task 5: Add File Modification Time Fallback
+- [x] Task 5 (All ACs)
+  - [x] Implement get_commits_with_fallback() method
+  - [x] Create _create_fallback_commit() to generate synthetic commit from file mtime
+  - [x] Add _get_story_file_path() helper method
+  - [x] Log fallback actions for debugging
+  - [x] Ensure fallback doesn't mask real Git errors
+  - [x] Write tests for fallback functionality (2 tests passing)
+
 **Implementation Details:**
 - Implement fallback logic per NFR22:
   - If Git correlation fails (exception raised):
@@ -152,6 +194,13 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - File mtime used as timestamp source
 
 ### Task 6: Add Logging for Git Correlation
+- [x] Task 6 (All ACs)
+  - [x] Import Python logging module
+  - [x] Add logger instance to GitCorrelator class
+  - [x] Log key events (repo init, pattern matching, commit matches, errors, fallback)
+  - [x] Use appropriate log levels (INFO, DEBUG, WARNING, ERROR)
+  - [x] Include context in log messages (story_id, commit count, status)
+
 **Implementation Details:**
 - Import Python logging module
 - Add logger instance to GitCorrelator class
@@ -169,6 +218,18 @@ This story is the foundation of Epic 2: Quality Validation & Trust. Without Git 
 - Log level appropriate (INFO for normal, ERROR for failures)
 
 ### Task 7: Write Unit Tests for GitCorrelator
+- [x] Task 7 (All ACs)
+  - [x] Create tests/test_git_correlator.py (14 tests passing)
+  - [x] Test get_commits_for_story() with mock Git repository
+  - [x] Test pattern matching with various commit message formats
+  - [x] Test status calculation (green/yellow/red)
+  - [x] Test error handling (invalid repo, missing story)
+  - [x] Test fallback to file mtime
+  - [x] Use pytest fixtures for test Git repository setup
+  - [x] Mock GitPython Repo object for isolated testing
+  - [x] Create tests/test_api_git_evidence.py (6 tests passing)
+  - [x] All 20 new tests passing, 121 total tests passing
+
 **Implementation Details:**
 - Create `tests/test_git_correlator.py`:
   - Test `get_commits_for_story()` with mock Git repository
@@ -388,14 +449,116 @@ for commit in repo.iter_commits():
 
 ---
 
+## Code Review Findings
+
+**Review Date:** 2026-01-10  
+**Review Type:** Adversarial Senior Developer Code Review  
+**Reviewer:** AI Code Review Agent (Claude Sonnet 4.5)
+
+### Issues Found: 9 Total (1 Critical, 1 High, 5 Medium, 2 Low)
+
+#### Critical Issues (Fixed)
+1. ✅ **API Endpoint Doesn't Use Fallback Method** - API called `get_commits_for_story()` instead of `get_commits_with_fallback()`
+   - **Fix:** Updated API endpoint to use `get_commits_with_fallback(story_id, project_root)` per NFR22
+   - **Location:** `backend/api/git_evidence.py:42`
+
+#### High Issues (Fixed)
+1. ✅ **AC Violation: Fallback Not Used in API** - Acceptance criteria requires fallback but API didn't use it
+   - **Fix:** Integrated fallback method into API endpoint
+   - **Location:** `backend/api/git_evidence.py:42`
+
+#### Medium Issues (Fixed)
+1. ✅ **Unused Imports** - `InvalidGitRepositoryError` and `GitCommandError` imported but not used
+   - **Fix:** Updated exception handling to use specific exception types, added `NoSuchPathError`
+   - **Location:** `backend/services/git_correlator.py:11, 29-33`
+
+2. ✅ **Timezone Handling Issue** - `replace(tzinfo=None)` could cause issues with timezone-aware datetimes
+   - **Fix:** Implemented proper timezone-aware and naive datetime comparison
+   - **Location:** `backend/services/git_correlator.py:165-171`
+
+3. ✅ **Hard-Coded Performance Limit** - `max_count=1000` hard-coded without documentation
+   - **Fix:** Added comment explaining performance optimization rationale
+   - **Location:** `backend/services/git_correlator.py:54-55`
+
+4. ✅ **Missing Performance Test** - No actual performance test for <100ms requirement
+   - **Fix:** Added `test_performance_requirement()` test with timing validation
+   - **Location:** `tests/test_git_correlator.py:267-290`
+
+5. ✅ **Incomplete File List Documentation** - Missing sprint-status.yaml and story file itself
+   - **Fix:** Updated File List to include all modified files
+   - **Location:** Story File List section
+
+#### Low Issues (Fixed)
+1. ✅ **Missing Timezone Tests** - No tests for timezone-aware vs naive datetime handling
+   - **Fix:** Added `test_calculate_status_with_timezone_aware_datetime()` and `test_calculate_status_with_naive_datetime()`
+   - **Location:** `tests/test_git_correlator.py:292-320`
+
+2. ✅ **API Fallback Test Missing** - No test verifying API uses fallback method
+   - **Fix:** Added `test_get_git_evidence_uses_fallback()` test
+   - **Location:** `tests/test_api_git_evidence.py:130-150`
+
+### Review Outcome
+- **Status:** ✅ PASSED (After Fixes)
+- **Issues Fixed:** 9 of 9 (All Critical, High, Medium, and Low issues resolved)
+- **Tests Added:** 4 new tests (performance, timezone handling, API fallback verification)
+- **Final Test Count:** 125 tests passing (17 GitCorrelator + 7 API + 101 existing)
+- **Story Status:** Ready for completion
+
+### Change Log
+
+**2026-01-10 (Code Review Fixes):**
+- Fixed API endpoint to use `get_commits_with_fallback()` method per NFR22 requirement
+- Updated exception handling to use specific GitPython exception types
+- Fixed timezone handling for both timezone-aware and naive datetime objects
+- Added performance test to validate <100ms correlation requirement
+- Added timezone handling tests for edge cases
+- Added API fallback usage verification test
+- Updated File List to include all modified files (sprint-status.yaml, story file)
+- All 9 code review issues resolved
+- Test count increased from 121 to 125 (4 new tests added)
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Sonnet 4.5 (via Cursor)
 
 ### Debug Log References
 
+N/A - No debug issues encountered
+
 ### Completion Notes List
 
+- ✅ Implemented complete GitCorrelator class with pattern matching, status calculation, and logging
+- ✅ All 7 story tasks completed (Tasks 1-7)
+- ✅ Pattern matching supports multiple commit message formats (story-1.3, [1.3], feat(story-1.3), etc.)
+- ✅ Status calculation: green (<7 days), yellow (>=7 days), red (no commits)
+- ✅ File modification time fallback implemented per NFR22 and integrated into API endpoint
+- ✅ Git Evidence API endpoint fully integrated and tested
+- ✅ Error handling for invalid repositories, missing files, Git command failures
+- ✅ Comprehensive logging at all levels (INFO, DEBUG, WARNING, ERROR)
+- ✅ 17 unit tests for GitCorrelator (100% passing, including performance and timezone tests)
+- ✅ 7 integration tests for API endpoint (100% passing, including fallback verification)
+- ✅ Full test suite: 125 tests passing, 0 failures
+- ✅ All acceptance criteria satisfied
+- ✅ Performance requirement validated: <100ms correlation time (tested)
+- ✅ Code follows architecture patterns: Flask Blueprint, dataclasses, standardized error format
+- ✅ Code review fixes applied: API fallback integration, timezone handling, specific exception types, performance test added
+
 ### File List
+
+**Created:**
+- backend/services/git_correlator.py - Complete GitCorrelator implementation with all methods
+- tests/test_git_correlator.py - Unit tests for GitCorrelator (17 tests)
+- tests/test_api_git_evidence.py - Integration tests for Git Evidence API (7 tests)
+
+**Modified:**
+- backend/api/git_evidence.py - Integrated GitCorrelator, implemented full endpoint with fallback support
+- backend/app.py - Registered git_evidence_bp blueprint
+- _bmad-output/implementation-artifacts/sprint-status.yaml - Updated story status tracking
+- _bmad-output/implementation-artifacts/2-1-git-correlation-engine.md - Story file updates
+
+**Unchanged:**
+- backend/models/git_evidence.py - (No changes, used existing dataclasses)

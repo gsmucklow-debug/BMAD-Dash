@@ -32,8 +32,12 @@ def create_app():
     from backend.api.dashboard import dashboard_bp
     app.register_blueprint(dashboard_bp)
     
+    # Register Git evidence blueprint (Story 2.1)
+    from backend.api.git_evidence import git_evidence_bp
+    app.register_blueprint(git_evidence_bp)
+    
     # Register other blueprints (will be added in later stories)
-    # from backend.api import git_evidence, test_evidence, ai_chat, refresh
+    # from backend.api import test_evidence, ai_chat, refresh
     
     @app.route('/')
     def index():

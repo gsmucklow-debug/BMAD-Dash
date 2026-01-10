@@ -56,7 +56,7 @@ development_status:
   
   # Epic 2: Quality Validation & Trust
   epic-2: in-progress
-  2-1-git-correlation-engine: ready-for-dev
+  2-1-git-correlation-engine: done
   2-2-test-discovery-result-parsing: backlog
   2-3-evidence-api-endpoints: backlog
   2-4-evidence-badges-expandable-modals: backlog
