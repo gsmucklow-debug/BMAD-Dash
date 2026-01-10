@@ -4,6 +4,7 @@ Coordinates parsing of BMAD artifacts (epics, stories, sprint-status)
 """
 import os
 import glob
+import re
 from typing import Optional
 from ..models.project import Project
 from ..models.epic import Epic
@@ -12,7 +13,14 @@ from ..models.task import Task
 from .yaml_parser import YAMLParser
 from .markdown_parser import MarkdownParser
 from ..services.phase_detector import PhaseDetector
+from ..services.git_correlator import GitCorrelator
 from ..utils.cache import Cache
+
+
+# Gap severity constants
+GAP_SEVERITY_HIGH = 'high'
+GAP_SEVERITY_MEDIUM = 'medium'
+GAP_SEVERITY_LOW = 'low'
 
 
 class BMADParser:
@@ -280,11 +288,15 @@ class BMADParser:
             # Convert task dicts to Task dataclasses
             tasks = [Task.from_dict(t) for t in task_dicts]
             
-            # Extract workflow history from frontmatter
-            workflow_history = self._extract_workflow_history(frontmatter)
+            # Extract workflow history from frontmatter (with Git fallback)
+            workflow_history = self._extract_workflow_history(
+                frontmatter,
+                story_data.get('story_id'),
+                story_path
+            )
             
             # Detect gaps
-            gaps = self._detect_gaps(frontmatter, workflow_history)
+            gaps = self._detect_gaps(frontmatter, workflow_history, story_path)
             
             # Build Story
             story = Story(
@@ -341,26 +353,109 @@ class BMADParser:
         
         return story_files
     
-    def _extract_workflow_history(self, frontmatter: dict) -> list:
+    def _extract_workflow_history(self, frontmatter: dict, story_id: str = None, story_path: str = None) -> list:
         """
         Extract workflow history from story frontmatter
+        Falls back to Git commit message analysis if frontmatter history is missing
         
         Args:
             frontmatter: Parsed YAML frontmatter dictionary
+            story_id: Story identifier (e.g., "1.3") for Git fallback
+            story_path: Path to story file for Git fallback
             
         Returns:
-            List of workflow execution records
+            List of workflow execution records, sorted by timestamp (most recent first)
         """
         workflows = frontmatter.get('workflows', [])
         
-        # If workflows is a list of dicts, return directly
-        if isinstance(workflows, list):
-            return workflows
+        # If workflows is a list of dicts, return directly (sorted)
+        if isinstance(workflows, list) and workflows:
+            # Sort by timestamp (most recent first)
+            sorted_workflows = sorted(
+                workflows,
+                key=lambda x: x.get('timestamp', ''),
+                reverse=True
+            )
+            return sorted_workflows
+        
+        # Git fallback: extract workflow history from Git commit messages
+        # This happens when frontmatter workflows is missing or empty
+        if story_id and self.root_path:
+            try:
+                git_history = self._extract_workflow_history_from_git(story_id)
+                if git_history:
+                    return git_history
+            except Exception as e:
+                # Log but don't fail - just return empty list
+                print(f"Warning: Git fallback failed for story {story_id}: {e}")
         
         # If workflows is None or not found, return empty list
         return []
     
-    def _detect_gaps(self, frontmatter: dict, workflow_history: list) -> list:
+    def _extract_workflow_history_from_git(self, story_id: str) -> list:
+        """
+        Extract workflow history from Git commit messages
+        Analyzes commit messages to identify workflow executions
+        
+        Args:
+            story_id: Story identifier (e.g., "1.3")
+            
+        Returns:
+            List of workflow execution records extracted from Git commits
+        """
+        try:
+            correlator = GitCorrelator(self.root_path)
+            commits = correlator.get_commits_for_story(story_id)
+            
+            if not commits:
+                return []
+            
+            # Parse commit messages to extract workflow information
+            workflow_history = []
+            workflow_patterns = {
+                'dev-story': re.compile(r'dev[-_]story|development', re.IGNORECASE),
+                'code-review': re.compile(r'code[-_]review|review', re.IGNORECASE),
+                'test': re.compile(r'test|testing|test[-_]evidence', re.IGNORECASE),
+                'create-story': re.compile(r'create[-_]story|story[-_]created', re.IGNORECASE)
+            }
+            
+            for commit in commits:
+                message = commit.message.lower()
+                detected_workflow = None
+                
+                # Check for workflow keywords in commit message
+                for workflow_name, pattern in workflow_patterns.items():
+                    if pattern.search(message):
+                        detected_workflow = workflow_name
+                        break
+                
+                if detected_workflow:
+                    # Determine result from commit message
+                    result = 'success'
+                    if any(word in message for word in ['fail', 'error', 'fix', 'bug']):
+                        result = 'failure'
+                    elif any(word in message for word in ['skip', 'wip', 'incomplete']):
+                        result = 'skipped'
+                    
+                    workflow_entry = {
+                        'name': detected_workflow,
+                        'timestamp': commit.timestamp.isoformat() if commit.timestamp else None,
+                        'result': result,
+                        'git_commit': commit.sha[:8],  # Short SHA
+                        'source': 'git'  # Indicate this came from Git analysis
+                    }
+                    workflow_history.append(workflow_entry)
+            
+            # Sort by timestamp (most recent first)
+            workflow_history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+            
+            return workflow_history
+            
+        except Exception as e:
+            print(f"Error extracting workflow history from Git: {e}")
+            return []
+    
+    def _detect_gaps(self, frontmatter: dict, workflow_history: list, story_path: str = None) -> list:
         """
         Detect workflow gaps based on story status and workflow history
         
@@ -372,6 +467,7 @@ class BMADParser:
         Args:
             frontmatter: Parsed YAML frontmatter dictionary
             workflow_history: List of workflow execution records
+            story_path: Path to story file for test evidence lookup
             
         Returns:
             List of gap dictionaries with type, message, and suggested command
@@ -393,7 +489,7 @@ class BMADParser:
                 'type': 'missing-dev-story',
                 'message': '⚠️ Missing: dev-story workflow',
                 'suggested_command': '/bmad-bmm-workflows-dev-story',
-                'severity': 'high'
+                'severity': GAP_SEVERITY_HIGH
             })
         
         # Gap 2: "dev-story" is complete but no "code-review" was executed
@@ -402,23 +498,81 @@ class BMADParser:
                 'type': 'missing-code-review',
                 'message': '⚠️ Missing: code-review workflow',
                 'suggested_command': '/bmad-bmm-workflows-code-review',
-                'severity': 'medium'
+                'severity': GAP_SEVERITY_MEDIUM
             })
         
         # Gap 3: "code-review" is done but 0 passing tests found (test-gap)
-        # Note: This requires test evidence data which is parsed separately
-        # Only add test-gap if story is "done" (completed) and has code-review
+        # This requires actual test evidence verification
         if status == 'done' and 'code-review' in executed_workflows:
-            # This gap will be detected when test evidence is available
-            # For now, we'll add a gap that can be resolved by test discovery
-            gaps.append({
-                'type': 'test-gap',
-                'message': '⚠️ Verify: Test results needed',
-                'suggested_command': '/bmad-bmm-workflows-dev-story',
-                'severity': 'low'
-            })
+            # Check test evidence to verify if 0 tests are passing
+            test_gap_detected = self._check_test_gap(story_path)
+            
+            if test_gap_detected:
+                gaps.append({
+                    'type': 'test-gap',
+                    'message': '⚠️ Critical: No passing tests found',
+                    'suggested_command': '/bmad-bmm-workflows-dev-story',
+                    'severity': GAP_SEVERITY_HIGH
+                })
         
         return gaps
+    
+    def _check_test_gap(self, story_path: str = None) -> bool:
+        """
+        Check if there are 0 passing tests for the story
+        
+        Args:
+            story_path: Path to story file
+            
+        Returns:
+            True if 0 passing tests detected, False otherwise
+        """
+        if not story_path:
+            return False
+        
+        try:
+            # Import test discovery service
+            from ..services.test_discoverer import TestDiscoverer
+            from ..utils.story_test_parser import StoryTestParser
+            
+            # Extract story ID from story path
+            story_id = None
+            match = re.search(r'(\d+)-(\d+)-', story_path)
+            if match:
+                story_id = f"{match.group(1)}.{match.group(2)}"
+            
+            if not story_id:
+                return False
+            
+            # Discover test files for this story
+            discoverer = TestDiscoverer(self.root_path)
+            test_files = discoverer.discover_tests_for_story(story_id)
+            
+            if not test_files:
+                # No test files found - this is a gap
+                return True
+            
+            # Parse test results
+            parser = StoryTestParser()
+            total_passing = 0
+            
+            for test_file in test_files:
+                try:
+                    test_data = parser.parse_test_file(test_file)
+                    if test_data:
+                        total_passing += test_data.get('passing', 0)
+                except Exception:
+                    # If we can't parse a test file, assume no passing tests
+                    continue
+            
+            # Return True if 0 tests are passing
+            return total_passing == 0
+            
+        except Exception as e:
+            # If we can't check test evidence, don't add a gap
+            # (better to have false negative than false positive)
+            print(f"Warning: Could not check test gap for {story_path}: {e}")
+            return False
     
     def invalidate_cache(self):
         """Invalidate all cached data"""

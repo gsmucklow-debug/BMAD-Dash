@@ -13,8 +13,8 @@ development_status:
   3-2-kanban-board-timeline-view: done
   3-3-minimal-list-view-manual-refresh: done
   4-1-three-layer-action-card-one-click-command-copy: done
-  4-2-workflow-history-gap-detection: review
-  5-1-gemini-api-integration-streaming-chat: backlog
+  4-2-workflow-history-gap-detection: done
+  5-1-gemini-api-integration-streaming-chat: ready-for-dev
   5-2-project-aware-qa-suggested-prompts: backlog
   5-3-ai-agent-output-validation-workflow-gap-warnings: backlog
   epic-0: in-progress
@@ -27,7 +27,7 @@ development_status:
   epic-3-retrospective: optional
   epic-4: in-progress
   epic-4-retrospective: optional
-  epic-5: backlog
+  epic-5: in-progress
   epic-5-retrospective: optional
 generated: 2026-01-09
 project: BMAD Dash
