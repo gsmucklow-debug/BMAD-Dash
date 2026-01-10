@@ -95,7 +95,6 @@ function setupRoutes() {
  */
 async function fetchDashboardData(projectRoot) {
     const url = `/api/dashboard?project_root=${encodeURIComponent(projectRoot)}`;
-    console.log('Fetching dashboard data from:', url);
 
     const response = await fetch(url);
 
@@ -111,7 +110,6 @@ async function fetchDashboardData(projectRoot) {
     }
 
     const data = await response.json();
-    console.log('Dashboard data loaded:', data);
     return data;
 }
 
@@ -159,8 +157,6 @@ async function loadProject(projectRoot) {
 
         // Re-render current view with new data
         router.handleRoute();
-
-        console.log('Project loaded successfully:', projectRoot);
     } catch (error) {
         hideLoading();
         showError(error.message);
@@ -171,11 +167,84 @@ async function loadProject(projectRoot) {
 }
 
 /**
+ * Handle manual refresh (Story 3.3)
+ * Clears cache and reloads dashboard data while preserving current view
+ */
+async function handleRefresh() {
+    const refreshStartTime = performance.now();
+
+    const refreshButton = document.getElementById('refresh-btn');
+    const projectRoot = localStorage.getItem('bmad_project_root') || DEFAULT_PROJECT_ROOT;
+
+    if (!projectRoot) {
+        console.warn('No project root set, cannot refresh');
+        return;
+    }
+
+    // Track refresh state to reset on next click (NFR17: no time-limited interactions)
+    const wasRefreshed = refreshButton.dataset.refreshed === 'true';
+    if (wasRefreshed) {
+        refreshButton.textContent = '↻ Refresh';
+        refreshButton.classList.remove('bg-green-700', 'bg-red-600');
+        refreshButton.classList.add('bg-green-600');
+        refreshButton.dataset.refreshed = 'false';
+    }
+
+    // Update button state to loading
+    refreshButton.textContent = '⟳ Refreshing...';
+    refreshButton.disabled = true;
+
+    try {
+        // Call refresh endpoint to clear cache
+        const refreshUrl = `/api/refresh?project_root=${encodeURIComponent(projectRoot)}`;
+        const refreshResponse = await fetch(refreshUrl, {
+            method: 'POST'
+        });
+
+        if (!refreshResponse.ok) {
+            const error = await refreshResponse.json();
+            throw new Error(error.message || 'Refresh failed');
+        }
+
+        // Re-fetch dashboard data
+        dashboardData = await fetchDashboardData(projectRoot);
+
+        // Re-render current view (preserve view mode)
+        router.handleRoute();
+
+        // Check performance (NFR7: <300ms)
+        const refreshTime = performance.now() - refreshStartTime;
+
+        if (refreshTime > 300) {
+            console.warn(`⚠ Refresh exceeded 300ms target: ${refreshTime.toFixed(2)}ms`);
+        }
+
+        // Persistent success feedback (NFR17: no auto-dismiss)
+        refreshButton.textContent = '✓ Refreshed';
+        refreshButton.classList.add('bg-green-700');
+        refreshButton.dataset.refreshed = 'true';
+
+    } catch (error) {
+        console.error('Refresh error:', error);
+        showError(error.message);
+
+        // Persistent error feedback (NFR17: no auto-dismiss)
+        refreshButton.textContent = '✗ Refresh Failed';
+        refreshButton.classList.add('bg-red-600');
+        refreshButton.classList.remove('bg-green-600');
+        refreshButton.dataset.refreshed = 'true';
+    } finally {
+        refreshButton.disabled = false;
+    }
+}
+
+/**
  * Set up event handlers
  */
 function setupEventHandlers() {
     const loadButton = document.getElementById('load-project-btn');
     const projectInput = document.getElementById('project-root-input');
+    const refreshButton = document.getElementById('refresh-btn');
 
     // Load project on button click
     loadButton.addEventListener('click', () => {
@@ -194,11 +263,15 @@ function setupEventHandlers() {
             }
         }
     });
+
+    // Refresh on button click (Story 3.3)
+    refreshButton.addEventListener('click', () => {
+        handleRefresh();
+    });
 }
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('BMAD Dash initializing...');
     setupEventHandlers();
     init();
 });

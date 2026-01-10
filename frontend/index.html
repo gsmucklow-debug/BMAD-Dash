@@ -8,20 +8,28 @@
 </head>
 <body class="bg-bmad-dark text-bmad-text min-h-screen">
     <div id="app" class="container mx-auto px-4 py-6">
-        <!-- Project Root Selector -->
+        <!-- Project Root Selector with Refresh Button -->
         <div id="project-selector" class="mb-6 flex items-center gap-4 p-4 bg-bmad-gray rounded-lg">
             <label for="project-root-input" class="text-sm text-bmad-text font-medium">Project Root:</label>
-            <input 
-                type="text" 
-                id="project-root-input" 
+            <input
+                type="text"
+                id="project-root-input"
                 class="flex-1 px-3 py-2 bg-bmad-dark text-bmad-text border border-bmad-muted rounded focus:outline-none focus:ring-2 focus:ring-bmad-accent"
                 placeholder="F:/BMAD Dash"
             />
-            <button 
-                id="load-project-btn" 
+            <button
+                id="load-project-btn"
                 class="px-6 py-2 bg-bmad-accent text-white rounded font-medium hover:bg-opacity-80 transition-colors min-w-[44px] min-h-[44px]"
             >
                 Load Project
+            </button>
+            <button
+                id="refresh-btn"
+                class="refresh-button px-6 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-colors min-w-[44px] min-h-[44px]"
+                aria-label="Refresh dashboard data"
+                title="Refresh dashboard data"
+            >
+                ↻ Refresh
             </button>
             <span id="project-loading" class="text-bmad-muted text-sm hidden">Loading...</span>
         </div>

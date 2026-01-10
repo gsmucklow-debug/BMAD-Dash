@@ -54,4 +54,59 @@
     .kanban-card:hover {
         @apply bg-bmad-surface-hover border-bmad-accent/50;
     }
+
+    /* List View Styles (Story 3.3) */
+    .list-view {
+        min-height: 100vh;
+    }
+
+    .list-story-title {
+        font-size: clamp(24px, 4vw, 36px);
+        line-height: 1.2;
+    }
+
+    .list-task-description {
+        font-size: clamp(16px, 2.5vw, 20px);
+        line-height: 1.5;
+    }
+
+    .list-command {
+        font-size: clamp(14px, 2vw, 18px);
+        line-height: 1.6;
+        word-break: break-all;
+    }
+
+    .list-command-container {
+        @apply bg-bmad-gray rounded-lg p-6;
+    }
+
+    /* Refresh Button Styles (Story 3.3) */
+    .refresh-button {
+        @apply min-w-[44px] min-h-[44px] transition-all;
+    }
+
+    .refresh-button:hover {
+        @apply shadow-lg transform scale-105;
+    }
+
+    .refresh-button:active {
+        @apply transform scale-95;
+    }
+
+    .refresh-button:disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+
+    /* Copy Button Styles */
+    .copy-button {
+        @apply min-w-[44px] min-h-[44px] transition-all;
+    }
+
+    .copy-button:hover {
+        @apply shadow-lg;
+    }
+
+    .copy-button:active {
+        @apply transform scale-95;
+    }
 }

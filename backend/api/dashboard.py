@@ -297,11 +297,25 @@ def build_quick_glance(project) -> Dict[str, Any]:
         total_tasks = len(current_story.tasks)
         done_tasks = len([t for t in current_story.tasks if t.status == "done"])
         
+        # Find current task (first in-progress, or first todo)
+        current_task_title = "No active task"
+        for task in current_story.tasks:
+            if task.status == "in-progress":
+                current_task_title = task.title
+                break
+        
+        if current_task_title == "No active task":
+            for task in current_story.tasks:
+                if task.status == "todo":
+                    current_task_title = task.title
+                    break
+
         quick_glance["current"] = {
             "story_id": current_story.story_id,
             "title": current_story.title,
             "status": current_story.status,
-            "progress": f"{done_tasks}/{total_tasks} tasks"
+            "progress": f"{done_tasks}/{total_tasks} tasks",
+            "current_task": current_task_title
         }
         
         # Find next story (after current)

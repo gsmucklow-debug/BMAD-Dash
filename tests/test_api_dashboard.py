@@ -184,6 +184,8 @@ class TestDashboardEndpoint:
             assert 'progress' in quick_glance['current']
             # Progress format: "N/M tasks"
             assert 'tasks' in quick_glance['current']['progress']
+            # New field for List View (Story 3.3)
+            assert 'current_task' in quick_glance['current']
         
         # If next story exists, it should have story_id, title
         if quick_glance['next']:

@@ -43,9 +43,13 @@ def create_app():
     # Register Review evidence blueprint (Story 3.2 Addendum)
     from backend.api.review_evidence import review_evidence_bp
     app.register_blueprint(review_evidence_bp)
-    
+
+    # Register Refresh blueprint (Story 3.3)
+    from backend.api.refresh import refresh_bp
+    app.register_blueprint(refresh_bp)
+
     # Register other blueprints (will be added in later stories)
-    # from backend.api import ai_chat, refresh
+    # from backend.api import ai_chat
     
     @app.route('/')
     def index():
