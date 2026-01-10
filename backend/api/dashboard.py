@@ -74,6 +74,41 @@ def get_dashboard():
     return jsonify(response), 200
 
 
+def _get_current_story_focus(all_stories):
+    """
+    Shared helper to determine the "current focus" story
+    
+    Priority order:
+    1. in-progress (actively being worked on)
+    2. review (completed work awaiting review)
+    3. ready-for-dev (next up for development)
+    4. None (if no active stories, let caller decide what to show)
+    
+    Args:
+        all_stories: List of Story objects
+        
+    Returns:
+        Story object or None
+    """
+    # Priority 1: in-progress
+    for story in all_stories:
+        if story.status == "in-progress":
+            return story
+    
+    # Priority 2: review
+    for story in all_stories:
+        if story.status == "review":
+            return story
+    
+    # Priority 3: ready-for-dev
+    for story in all_stories:
+        if story.status == "ready-for-dev":
+            return story
+    
+    # No active story found
+    return None
+
+
 def build_dashboard_response(project) -> Dict[str, Any]:
     """
     Build complete dashboard response from Project dataclass
@@ -88,7 +123,8 @@ def build_dashboard_response(project) -> Dict[str, Any]:
         "project": build_project_data(project),
         "breadcrumb": build_breadcrumb(project),
         "quick_glance": build_quick_glance(project),
-        "kanban": build_kanban(project)
+        "kanban": build_kanban(project),
+        "action_card": build_action_card(project)
     }
 
 
@@ -273,24 +309,7 @@ def build_quick_glance(project) -> Dict[str, Any]:
         }
     
     # Find current story (in-progress, review, or ready-for-dev)
-    # Priority order: in-progress > review > ready-for-dev
-    current_story = None
-    for story in all_stories:
-        if story.status == "in-progress":
-            current_story = story
-            break
-    
-    if not current_story:
-        for story in all_stories:
-            if story.status == "review":
-                current_story = story
-                break
-    
-    if not current_story:
-        for story in all_stories:
-            if story.status == "ready-for-dev":
-                current_story = story
-                break
+    current_story = _get_current_story_focus(all_stories)
     
     if current_story:
         # Calculate progress
@@ -397,3 +416,173 @@ def build_kanban(project) -> Dict[str, List[Dict[str, Any]]]:
                     break
     
     return kanban
+
+
+def build_action_card(project) -> Dict[str, Any]:
+    """
+    Build action card with three layers: Story > Task > Command
+    
+    Logic:
+    - Layer 1 (Story): Current story title and acceptance criteria summary
+    - Layer 2 (Task): Current task description with progress (e.g., "Task 2/5: Write API route handler")
+    - Layer 3 (Command): Context-specific BMAD workflow command based on story state
+    
+    Command Suggestions:
+    - todo/ready-for-dev: /bmad-bmm-workflows-dev-story
+    - in-progress: /bmad-bmm-workflows-dev-story (continuing)
+    - review: /bmad-bmm-workflows-code-review
+    - done: /bmad-bmm-workflows-create-story [next_story_id]
+    
+    Args:
+        project: Project dataclass
+        
+    Returns:
+        Dictionary with story_layer, task_layer, command_layer
+    """
+    action_card = {
+        "story_layer": None,
+        "task_layer": None,
+        "command_layer": None
+    }
+    
+    # Flatten all stories from all epics
+    all_stories = []
+    for epic in project.epics:
+        all_stories.extend(epic.stories)
+    
+    # Find current story using shared helper
+    current_story = _get_current_story_focus(all_stories)
+    
+    # If no active story, check if all stories are done (trigger retrospective)
+    if not current_story:
+        done_stories = [s for s in all_stories if s.status == "done"]
+        if done_stories and len(done_stories) == len(all_stories):
+            # All stories complete - suggest retrospective
+            action_card["command_layer"] = {
+                "command": "/bmad-bmm-workflows-retrospective",
+                "description": "All stories complete - run retrospective"
+            }
+            # Use most recent completed story for context
+            done_stories.sort(key=lambda s: s.completed if s.completed else "0000-00-00", reverse=True)
+            most_recent = done_stories[0]
+            action_card["story_layer"] = {
+                "story_id": most_recent.story_id,
+                "title": most_recent.title,
+                "status": most_recent.status,
+                "acceptance_criteria_summary": []
+            }
+            action_card["task_layer"] = {
+                "task_id": None,
+                "title": "Epic complete",
+                "status": "done",
+                "progress": f"{len(done_stories)}/{len(all_stories)} stories"
+            }
+            return action_card
+        
+        # Not all done, find first todo/backlog for "next" suggestion
+        for story in all_stories:
+            if story.status in ["todo", "backlog"]:
+                # Show as "next" not "current" by setting command to create-story
+                action_card["command_layer"] = {
+                    "command": f"/bmad-bmm-workflows-create-story {story.story_id}",
+                    "description": f"Start next story: {story.title}"
+                }
+                action_card["story_layer"] = {
+                    "story_id": story.story_id,
+                    "title": story.title,
+                    "status": story.status,
+                    "acceptance_criteria_summary": []
+                }
+                action_card["task_layer"] = {
+                    "task_id": None,
+                    "title": "Story not started",
+                    "status": "none",
+                    "progress": "0/0 tasks"
+                }
+                return action_card
+        
+        # Truly no stories - suggest creating first story
+        action_card["command_layer"] = {
+            "command": "/bmad-bmm-workflows-create-story",
+            "description": "No active stories - create first story"
+        }
+        return action_card
+    
+    if current_story:
+        # Layer 1: Story information
+        # Extract acceptance criteria summary (first 3 criteria or all if fewer)
+        ac_summary = []
+        if hasattr(current_story, 'acceptance_criteria') and current_story.acceptance_criteria:
+            ac_summary = current_story.acceptance_criteria[:3]
+        
+        action_card["story_layer"] = {
+            "story_id": current_story.story_id,
+            "title": current_story.title,
+            "status": current_story.status,
+            "acceptance_criteria_summary": ac_summary
+        }
+        
+        # Layer 2: Task information
+        total_tasks = len(current_story.tasks)
+        done_tasks = len([t for t in current_story.tasks if t.status == "done"])
+        
+        # Find current task (first in-progress, or first todo)
+        current_task = None
+        current_task_index = 0
+        
+        for i, task in enumerate(current_story.tasks):
+            if task.status == "in-progress":
+                current_task = task
+                current_task_index = i + 1  # 1-indexed
+                break
+        
+        if not current_task:
+            for i, task in enumerate(current_story.tasks):
+                if task.status == "todo":
+                    current_task = task
+                    current_task_index = i + 1  # 1-indexed
+                    break
+        
+        if current_task:
+            action_card["task_layer"] = {
+                "task_id": current_task.task_id,
+                "title": current_task.title,
+                "status": current_task.status,
+                "progress": f"Task {current_task_index}/{total_tasks}"
+            }
+        else:
+            # No active task
+            action_card["task_layer"] = {
+                "task_id": None,
+                "title": "No active task",
+                "status": "none",
+                "progress": f"0/{total_tasks} tasks"
+            }
+        
+        # Layer 3: Command suggestion based on story status
+        command = ""
+        command_description = ""
+        
+        if current_story.status in ["todo", "ready-for-dev"]:
+            command = f"/bmad-bmm-workflows-dev-story {current_story.story_id}"
+            command_description = "Start or continue development on this story"
+        elif current_story.status == "in-progress":
+            command = f"/bmad-bmm-workflows-dev-story {current_story.story_id}"
+            command_description = "Continue development on this story"
+        elif current_story.status == "review":
+            command = f"/bmad-bmm-workflows-code-review {current_story.story_id}"
+            command_description = "Run adversarial code review"
+        
+        action_card["command_layer"] = {
+            "command": command,
+            "description": command_description
+        }
+    else:
+        # No stories found - suggest creating first story
+        action_card["command_layer"] = {
+            "command": "/bmad-bmm-workflows-create-story",
+            "description": "No active stories - create first story"
+        }
+    
+    return action_card
+

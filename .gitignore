@@ -31,3 +31,6 @@ nul
 
 # BMAD Workflows (not part of BMAD Dash source)
 _bmad/
+
+# Backup files
+*.bak

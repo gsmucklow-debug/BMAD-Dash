@@ -416,3 +416,169 @@ class TestDashboardDataBuilders:
         assert isinstance(kanban['in_progress'], list)
         assert isinstance(kanban['review'], list)
         assert isinstance(kanban['done'], list)
+
+
+class TestActionCardData:
+    """Test suite for action card data structure and command suggestions (Story 4.1)"""
+    
+    def test_action_card_structure(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test action card data structure
+        
+        Acceptance Criteria:
+        - Action card has story_layer, task_layer, command_layer
+        - Each layer has required fields
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        # Verify action_card exists in response
+        assert 'action_card' in data
+        action_card = data['action_card']
+        
+        # Verify three layers exist
+        assert 'story_layer' in action_card
+        assert 'task_layer' in action_card
+        assert 'command_layer' in action_card
+    
+    def test_story_layer_structure(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test story layer contains story information
+        
+        Acceptance Criteria:
+        - Story layer has story_id, title, status
+        - Acceptance criteria summary is present (if available)
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        story_layer = data['action_card']['story_layer']
+        
+        if story_layer:
+            assert 'story_id' in story_layer
+            assert 'title' in story_layer
+            assert 'status' in story_layer
+            assert 'acceptance_criteria_summary' in story_layer
+            
+            # Verify acceptance criteria is a list
+            assert isinstance(story_layer['acceptance_criteria_summary'], list)
+    
+    def test_task_layer_structure(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test task layer contains task information
+        
+        Acceptance Criteria:
+        - Task layer has task_id, title, status, progress
+        - Progress format is "Task N/M"
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        task_layer = data['action_card']['task_layer']
+        
+        if task_layer:
+            assert 'task_id' in task_layer
+            assert 'title' in task_layer
+            assert 'status' in task_layer
+            assert 'progress' in task_layer
+            
+            # Verify progress format
+            if task_layer['task_id']:  # If there's an active task
+                assert 'Task' in task_layer['progress']
+                assert '/' in task_layer['progress']
+    
+    def test_command_layer_structure(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test command layer contains command suggestion
+        
+        Acceptance Criteria:
+        - Command layer has command and description
+        - Command starts with /bmad-bmm-workflows-
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        command_layer = data['action_card']['command_layer']
+        
+        assert command_layer is not None
+        assert 'command' in command_layer
+        assert 'description' in command_layer
+        
+        # Verify command format
+        assert command_layer['command'].startswith('/bmad-bmm-workflows-')
+    
+    def test_command_suggestion_for_ready_for_dev(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test command suggestion for ready-for-dev story
+        
+        Acceptance Criteria:
+        - Story with status "ready-for-dev" suggests /bmad-bmm-workflows-dev-story
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        story_layer = data['action_card']['story_layer']
+        command_layer = data['action_card']['command_layer']
+        
+        # If current story is ready-for-dev, verify command
+        if story_layer and story_layer['status'] == 'ready-for-dev':
+            assert '/bmad-bmm-workflows-dev-story' in command_layer['command']
+            assert story_layer['story_id'] in command_layer['command']
+    
+    def test_command_suggestion_for_in_progress(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test command suggestion for in-progress story
+        
+        Acceptance Criteria:
+        - Story with status "in-progress" suggests /bmad-bmm-workflows-dev-story
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        story_layer = data['action_card']['story_layer']
+        command_layer = data['action_card']['command_layer']
+        
+        # If current story is in-progress, verify command
+        if story_layer and story_layer['status'] == 'in-progress':
+            assert '/bmad-bmm-workflows-dev-story' in command_layer['command']
+            assert story_layer['story_id'] in command_layer['command']
+    
+    def test_command_suggestion_for_review(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test command suggestion for review story
+        
+        Acceptance Criteria:
+        - Story with status "review" suggests /bmad-bmm-workflows-code-review
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        story_layer = data['action_card']['story_layer']
+        command_layer = data['action_card']['command_layer']
+        
+        # If current story is in review, verify command
+        if story_layer and story_layer['status'] == 'review':
+            assert '/bmad-bmm-workflows-code-review' in command_layer['command']
+            assert story_layer['story_id'] in command_layer['command']
+    
+    def test_action_card_json_serialization(self, client, bmad_dash_project_root, clear_cache):
+        """
+        Test that action card data is properly JSON serializable
+        
+        Acceptance Criteria:
+        - All action card data can be serialized to JSON
+        - No TypeError or encoding issues
+        """
+        response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
+        data = response.get_json()
+        
+        action_card = data['action_card']
+        
+        # Should be able to serialize to JSON
+        json_str = json.dumps(action_card)
+        assert json_str is not None
+        
+        # Should be able to parse back
+        reparsed = json.loads(json_str)
+        assert reparsed == action_card
+

@@ -6,6 +6,7 @@
 import { render as renderBreadcrumb } from '../components/breadcrumb.js';
 import { render as renderQuickGlance } from '../components/quick-glance.js';
 import { getBadgesSkeletonHTML, updateBadges } from '../components/evidence-badge.js';
+import { renderActionCard, attachActionCardListeners } from '../components/action-card.js';
 
 /**
  * Render the Dashboard View
@@ -22,63 +23,32 @@ export function render(data) {
     renderBreadcrumb(data.breadcrumb);
     renderQuickGlance(data);
 
-    // Flatten stories for badge initialization and finding current story
+    // Flatten stories for badge initialization
     const allStories = [];
     if (data.kanban) {
         Object.values(data.kanban).forEach(list => allStories.push(...list));
     }
 
-    // Find current story using quick_glance data or fallback
-    let currentStory = null;
-    if (data.quick_glance && data.quick_glance.current) {
-        currentStory = allStories.find(s => s.id === data.quick_glance.current.story_id);
-    }
-
-    // Clear main content and show Kanban board
+    // Clear main content and show Action Card + Kanban board
     const projectRoot = data.project.root_path;
     container.innerHTML = `
         <div class="flex flex-col gap-6 p-6 h-[calc(100vh-140px)]">
-            ${currentStory ? renderActionCard(currentStory, projectRoot) : ''}
+            ${renderActionCard(data)}
             ${renderKanbanBoard(data.kanban, projectRoot)}
         </div>
     `;
 
+    // Attach action card event listeners after rendering
+    attachActionCardListeners(data);
+
     // Initialize badges for all stories
     allStories.forEach(story => {
-        // Update Action Card badge if exists
-        const actionBadgeId = `badges-${story.id}`;
-        if (document.getElementById(actionBadgeId)) {
-            updateBadges(actionBadgeId, story.id, projectRoot);
-        }
-
-        // Update Board Card badge if exists
+        // Update Board Card badge
         const boardBadgeId = `board-badges-${story.id}`;
         if (document.getElementById(boardBadgeId)) {
             updateBadges(boardBadgeId, story.id, projectRoot);
         }
     });
-}
-
-function renderActionCard(story, projectRoot) {
-    return `
-        <div class="bg-bmad-surface border border-bmad-accent/30 rounded-lg p-4 shadow-lg shadow-bmad-accent/5 backdrop-blur-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="text-xs font-bold text-bmad-accent bg-bmad-accent/10 px-2 py-0.5 rounded">CURRENT FOCUS</span>
-                        <span class="text-xs text-bmad-muted">${story.id}</span>
-                    </div>
-                    <h2 class="text-xl font-semibold text-white mb-2">${story.title}</h2>
-                    <p class="text-sm text-bmad-muted-foreground line-clamp-2">${story.description || 'No description available.'}</p>
-                </div>
-                <div class="text-right">
-                    <div id="badges-${story.id}">
-                        ${getBadgesSkeletonHTML()}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
 }
 
 function renderKanbanBoard(kanbanData, projectRoot) {

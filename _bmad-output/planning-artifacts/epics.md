@@ -86,8 +86,8 @@ This document provides the complete epic and story breakdown for BMAD Dash, deco
 - FR56: Interact with all features via mouse clicks (no keyboard shortcut requirements)
 - FR57: View high-contrast color-coded indicators (green/red/yellow distinctly visible)
 - FR58: Expand details on demand (progressive disclosure)
-- FR59: System loads and displays dashboard in <500ms from startup
 - FR60: System maintains responsive UI during Git parsing and test discovery operations
+- FR61: Execute story status transitions (e.g., ready-for-dev -> in-progress -> review -> done) via AI coach suggested actions
 
 ### Non-Functional Requirements
 
@@ -747,6 +747,7 @@ So that **I can ask project-aware questions and get answers in real-time**.
 **And** API key is never sent to frontend (stored backend-only - security requirement)
 **And** if Gemini API fails, chat shows error but dashboard still works (NFR21)
 **And** streaming completes without memory leaks (NFR9)
+**And** supports **One-Click Status Transitions** (e.g., AI suggests "Mark as Done" after successful review, and clicking a generated command updates the story file/sprint-status.yaml via a dedicated backend endpoint)
 
 ### Story 5.2: Project-Aware Q&A & Suggested Prompts
 
