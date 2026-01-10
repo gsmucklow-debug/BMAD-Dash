@@ -60,17 +60,68 @@ class TestDiscoverer:
         ]
         
         matching_files = []
+        
+        # Phase 1: Filename-based discovery
         for test_dir in test_dirs:
             if not os.path.exists(test_dir):
                 continue
             
-            # Search recursively
+            # Search recursively by filename pattern
             for pattern in patterns:
                 matches = list(Path(test_dir).rglob(pattern))
                 for match in matches:
                     file_path = str(match)
                     if file_path not in matching_files:
                         matching_files.append(file_path)
+        
+        # Phase 2: Content-based discovery (search for story references inside files)
+        # This handles projects where tests are named by module, not by story ID
+        content_patterns = [
+            f'story_id="{normalized_id}"',      # story_id="2.3"
+            f"story_id='{normalized_id}'",      # story_id='2.3'
+            f'story_id: "{normalized_id}"',     # story_id: "2.3" (YAML-style)
+            f"@story {normalized_id}",          # @story 2.3 (decorator/comment)
+            f"Story {normalized_id}",           # Story 2.3 (docstring)
+            f"story-{epic}.{story}",            # story-2.3 (URL/slug style)
+            f"story_{epic}_{story}",            # story_2_3 (underscore style)
+        ]
+        
+        for test_dir in test_dirs:
+            if not os.path.exists(test_dir):
+                continue
+            
+            # Search all test files for content matches
+            for test_file in Path(test_dir).rglob("test_*.py"):
+                file_path = str(test_file)
+                if file_path in matching_files:
+                    continue  # Already found by filename
+                
+                try:
+                    content = test_file.read_text(encoding='utf-8', errors='ignore')
+                    for pattern in content_patterns:
+                        if pattern in content:
+                            matching_files.append(file_path)
+                            logger.debug(f"Content match for story {story_id}: {file_path}")
+                            break
+                except Exception as e:
+                    logger.warning(f"Could not read test file {file_path}: {e}")
+            
+            # Also check JavaScript/TypeScript test files
+            for ext in ['*.test.js', '*.test.ts', '*.spec.js', '*.spec.ts']:
+                for test_file in Path(test_dir).rglob(ext):
+                    file_path = str(test_file)
+                    if file_path in matching_files:
+                        continue
+                    
+                    try:
+                        content = test_file.read_text(encoding='utf-8', errors='ignore')
+                        for pattern in content_patterns:
+                            if pattern in content:
+                                matching_files.append(file_path)
+                                logger.debug(f"Content match for story {story_id}: {file_path}")
+                                break
+                    except Exception as e:
+                        logger.warning(f"Could not read test file {file_path}: {e}")
         
         logger.info(f"Found {len(matching_files)} test files for story {story_id}")
         return matching_files
