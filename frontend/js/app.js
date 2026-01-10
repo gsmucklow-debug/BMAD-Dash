@@ -5,6 +5,7 @@
 
 import { render as renderBreadcrumb } from './components/breadcrumb.js';
 import { render as renderQuickGlance } from './components/quick-glance.js';
+import { init as initEvidenceModal } from './components/evidence-modal.js';
 
 const DEFAULT_PROJECT_ROOT = 'F:/BMAD Dash';
 
@@ -13,6 +14,9 @@ const DEFAULT_PROJECT_ROOT = 'F:/BMAD Dash';
  */
 async function init() {
     console.time('Dashboard Load Time');
+
+    // Initialize modal component (Story 2.4)
+    initEvidenceModal();
 
     // Load project root from localStorage or use default
     const projectRoot = localStorage.getItem('bmad_project_root') || DEFAULT_PROJECT_ROOT;

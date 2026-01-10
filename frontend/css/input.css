@@ -17,4 +17,28 @@
     .breadcrumb-current {
         @apply text-bmad-accent font-semibold;
     }
+
+    /* Custom Scrollbar for Modals */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        @apply bg-bmad-dark;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-bmad-gray rounded-full hover:bg-bmad-muted transition-colors;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.2s ease-out;
+    }
 }

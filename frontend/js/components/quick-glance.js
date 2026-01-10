@@ -4,6 +4,8 @@
  * with progress indicators for the current story
  */
 
+import { getBadgesSkeletonHTML, updateBadges } from './evidence-badge.js';
+
 // Constants
 const CONTAINER_ID = 'quick-glance-container';
 
@@ -44,6 +46,11 @@ export function render(data) {
     `;
 
     container.innerHTML = quickGlanceHTML;
+
+    // Initialize badges for current story if available and project root exists
+    if (current && current.story_id && data.project && data.project.root_path) {
+        updateBadges('evidence-badges-container', current.story_id, data.project.root_path);
+    }
 }
 
 /**
@@ -96,7 +103,7 @@ function renderCurrentSection(current) {
     const title = escapeHtml(current.title || '');
     const storyId = escapeHtml(current.story_id || '');
     const status = escapeHtml(current.status || '');
-    
+
     // Parse progress string (e.g., "2/8 tasks")
     const progressBar = parseProgress(current.progress);
 
@@ -122,6 +129,9 @@ function renderCurrentSection(current) {
                     Status: ${status}
                 </div>
             ` : ''}
+            
+            <!-- Evidence Badges (Story 2.4) -->
+            ${getBadgesSkeletonHTML()}
         </div>
     `;
 }
@@ -188,7 +198,7 @@ function parseProgress(progressStr) {
     // Calculate percentage with bounds checking (0-100%)
     const rawPercentage = (completed / total) * 100;
     const percentage = Math.min(100, Math.max(0, Math.round(rawPercentage)));
-    
+
     return { percentage, completed, total };
 }
 

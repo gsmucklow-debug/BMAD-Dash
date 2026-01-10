@@ -53,7 +53,7 @@ class BMADParser:
         # Parse sprint-status.yaml if it exists
         sprint_status_path = os.path.join(self.implementation_artifacts, "sprint-status.yaml")
         sprint_status_mtime = 0.0
-        epics_data = []
+        epics = []
         
         if os.path.exists(sprint_status_path):
             sprint_status_mtime = os.path.getmtime(sprint_status_path)
@@ -63,7 +63,7 @@ class BMADParser:
             cached = self.cache.get(cache_key, sprint_status_path)
             
             if cached:
-                epics_data = cached
+                epics = cached
             else:
                 # Parse sprint-status.yaml
                 with open(sprint_status_path, 'r', encoding='utf-8') as f:
@@ -72,15 +72,19 @@ class BMADParser:
                 parsed = YAMLParser.parse_yaml_file(content, sprint_status_path)
                 
                 if 'error' not in parsed:
-                    epics_data = parsed.get('epics', [])
-                    self.cache.set(cache_key, epics_data, sprint_status_path)
-        
-        # Build epics with stories
-        epics = []
-        for epic_data in epics_data:
-            epic = self._build_epic(epic_data)
-            if epic:
-                epics.append(epic)
+                    # Handle flat development_status format
+                    dev_status = parsed.get('development_status', {})
+                    if dev_status:
+                        epics = self._parse_development_status(dev_status)
+                    else:
+                        # Fallback to nested epics format
+                        epics_data = parsed.get('epics', [])
+                        for epic_data in epics_data:
+                            epic = self._build_epic(epic_data)
+                            if epic:
+                                epics.append(epic)
+                    
+                    self.cache.set(cache_key, epics, sprint_status_path)
         
         # Create and return Project
         project = Project(
@@ -92,6 +96,87 @@ class BMADParser:
         )
         
         return project
+    
+    def _parse_development_status(self, dev_status: dict) -> list:
+        """
+        Parse flat development_status format into Epic/Story structure
+        
+        Format:
+            epic-0: in-progress
+            0-1-story-name: done
+            epic-1: backlog
+            1-1-another-story: in-progress
+        
+        Args:
+            dev_status: Dictionary from development_status key
+            
+        Returns:
+            List of Epic dataclasses
+        """
+        import re
+        
+        # Group entries by epic
+        epic_map = {}  # epic_num -> {status, stories: []}
+        
+        for key, status in dev_status.items():
+            # Skip retrospective entries
+            if 'retrospective' in key:
+                continue
+            
+            # Check if this is an epic entry (e.g., "epic-0")
+            epic_match = re.match(r'^epic-(\d+)$', key)
+            if epic_match:
+                epic_num = int(epic_match.group(1))
+                if epic_num not in epic_map:
+                    epic_map[epic_num] = {'status': status, 'stories': []}
+                else:
+                    epic_map[epic_num]['status'] = status
+                continue
+            
+            # Check if this is a story entry (e.g., "2-4-evidence-badges")
+            story_match = re.match(r'^(\d+)-(\d+)-(.+)$', key)
+            if story_match:
+                epic_num = int(story_match.group(1))
+                story_num = int(story_match.group(2))
+                story_slug = story_match.group(3)
+                
+                if epic_num not in epic_map:
+                    epic_map[epic_num] = {'status': 'backlog', 'stories': []}
+                
+                epic_map[epic_num]['stories'].append({
+                    'story_key': key,
+                    'story_id': f"{epic_num}.{story_num}",
+                    'epic': epic_num,
+                    'status': status,
+                    'title': story_slug.replace('-', ' ').title()
+                })
+        
+        # Build Epic objects
+        epics = []
+        for epic_num in sorted(epic_map.keys()):
+            epic_data = epic_map[epic_num]
+            
+            # Parse story files
+            stories = []
+            for story_data in epic_data['stories']:
+                story = self._parse_story_file(story_data)
+                if story:
+                    stories.append(story)
+            
+            # Calculate progress
+            total_stories = len(stories)
+            done_stories = sum(1 for s in stories if s.status == 'done')
+            
+            epic = Epic(
+                epic_id=str(epic_num),
+                title=f"Epic {epic_num}",
+                status=epic_data['status'],
+                stories=stories,
+                progress={"total": total_stories, "done": done_stories}
+            )
+            epics.append(epic)
+        
+        return epics
     
     def _build_epic(self, epic_data: dict) -> Optional[Epic]:
         """
