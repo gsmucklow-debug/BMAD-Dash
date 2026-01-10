@@ -3,6 +3,7 @@ story_id: "3.2"
 title: "Kanban Board & Timeline View"
 epic: "epic-3"
 status: done
+completed: "2026-01-10"
 last_updated: "2026-01-10"
 ---
 
@@ -15,36 +16,36 @@ So that **I can see all project work organized by status and understand the exec
 ## Acceptance Criteria
 
 ### Kanban Board
-- [ ] **Render Kanban Columns**
-    - [ ] Display 4 columns: TODO | IN PROGRESS | REVIEW | COMPLETE
-    - [ ] Filter stories from API data into correct columns
-    - [ ] Sort stories within columns (e.g., by ID or priority)
-    - [ ] Render generous whitespace between cards (UX)
+- [x] **Render Kanban Columns**
+    - [x] Display 4 columns: TODO | IN PROGRESS | REVIEW | COMPLETE
+    - [x] Filter stories from API data into correct columns
+    - [x] Sort stories within columns (e.g., by ID or priority)
+    - [x] Render generous whitespace between cards (UX)
 
-- [ ] **Render Story Cards**
-    - [ ] Display title, story ID, and epic reference
-    - [ ] Show status badges (color-coded)
-    - [ ] Clickable to show details (if applicable, or just visual for now)
+- [x] **Render Story Cards**
+    - [x] Display title, story ID, and epic reference
+    - [x] Show status badges (color-coded)
+    - [x] Clickable to show details (if applicable, or just visual for now)
 
-- [ ] **Unified Action Card (Current Story)**
-    - [ ] Display prominently for the active story
-    - [ ] Show combined Story + Task + Command layers (Story 4.1 preview functionality)
-    - [ ] Identify current task from story data
+- [x] **Unified Action Card (Current Story)**
+    - [x] Display prominently for the active story
+    - [x] Show combined Story + Task + Command layers (Story 4.1 preview functionality)
+    - [x] Identify current task from story data
 
-- [ ] **Performance (NFRs)**
-    - [ ] Board renders in <100ms
-    - [ ] Supports 100+ stories without degradation
+- [x] **Performance (NFRs)**
+    - [x] Board renders in <100ms
+    - [x] Supports 100+ stories without degradation
 
 ### Timeline View
-- [ ] **Render Visual Timeline**
-    - [ ] Display vertical timeline of workflow execution history
-    - [ ] Show which BMAD workflows were run and when (from Story 4.2 data or placeholder if not ready)
-    - [ ] Order by most recent at top
-    - [ ] Clickable entries to see details
+- [x] **Render Visual Timeline**
+    - [x] Display vertical timeline of workflow execution history
+    - [x] Show which BMAD workflows were run and when (from Story 4.2 data or placeholder if not ready)
+    - [x] Order by most recent at top
+    - [x] Clickable entries to see details
 
-- [ ] **Integration**
-    - [ ] Swapping between Dashboard (Kanban) and Timeline retains state
-    - [ ] No memory leaks
+- [x] **Integration**
+    - [x] Swapping between Dashboard (Kanban) and Timeline retains state
+    - [x] No memory leaks
 
 ## Implementation Tasks
 
