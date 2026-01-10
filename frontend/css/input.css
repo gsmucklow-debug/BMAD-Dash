@@ -109,4 +109,93 @@
     .copy-button:active {
         @apply transform scale-95;
     }
+    
+    /* Workflow History Styles (Story 4.2) */
+    .workflow-history-section {
+        @apply mt-4;
+    }
+    
+    .workflow-gaps-header {
+        @apply text-base font-semibold text-yellow-400 mb-3;
+    }
+    
+    .gap-banner {
+        @apply flex flex-col gap-2;
+    }
+    
+    .gap-message {
+        @apply text-base;
+    }
+    
+    .gap-suggestion {
+        @apply flex items-center gap-2;
+    }
+    
+    .gap-command-label {
+        @apply text-sm text-bmad-muted;
+    }
+    
+    .gap-command {
+        @apply font-mono text-sm px-3 py-1.5 rounded transition-colors;
+    }
+    
+    .workflow-history-header {
+        @apply text-base font-semibold text-bmad-text mb-3;
+    }
+    
+    .workflow-history-list {
+        @apply flex flex-col gap-3;
+    }
+    
+    .workflow-timeline {
+        @apply flex flex-col gap-3 pl-4 border-l-2 border-bmad-muted;
+    }
+    
+    .workflow-item {
+        @apply flex gap-3 relative;
+    }
+    
+    .workflow-item-latest {
+        @apply bg-bmad-surface/50 rounded p-2 -ml-2;
+    }
+    
+    .workflow-dot {
+        @apply w-3 h-3 rounded-full flex-shrink-0;
+    }
+    
+    .workflow-content {
+        @apply flex-1;
+    }
+    
+    .workflow-name {
+        @apply text-sm font-medium text-bmad-text;
+    }
+    
+    .workflow-details {
+        @apply flex items-center gap-2 mt-1;
+    }
+    
+    .workflow-timestamp {
+        @apply text-xs text-bmad-muted;
+    }
+    
+    .workflow-status {
+        @apply text-xs px-2 py-0.5 rounded font-semibold;
+    }
+    
+    .workflow-status-success {
+        @apply bg-green-600 text-white;
+    }
+    
+    .workflow-status-failed {
+        @apply bg-red-600 text-white;
+    }
+    
+    .workflow-status-running {
+        @apply bg-blue-600 text-white;
+    }
+    
+    .workflow-history-empty {
+        @apply text-sm text-bmad-muted italic py-4;
+    }
 }

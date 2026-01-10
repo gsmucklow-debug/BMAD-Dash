@@ -2,7 +2,7 @@
 BMAD Dash - Story Data Model
 """
 from dataclasses import dataclass, field
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, Dict, Any
 
 if TYPE_CHECKING:
     from .task import Task
@@ -23,6 +23,8 @@ class Story:
     completed: Optional[str] = None  # ISO date if done
     file_path: str = ""
     mtime: float = 0.0
+    workflow_history: List[Dict[str, Any]] = field(default_factory=list)  # Workflow execution history
+    gaps: List[Dict[str, Any]] = field(default_factory=list)  # Detected workflow gaps
     
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON responses"""
@@ -36,7 +38,9 @@ class Story:
             "created": self.created,
             "completed": self.completed,
             "file_path": self.file_path,
-            "mtime": self.mtime
+            "mtime": self.mtime,
+            "workflow_history": self.workflow_history,
+            "gaps": self.gaps
         }
     
     @classmethod
@@ -53,5 +57,7 @@ class Story:
             created=data.get("created", ""),
             completed=data.get("completed"),
             file_path=data.get("file_path", ""),
-            mtime=data.get("mtime", 0.0)
+            mtime=data.get("mtime", 0.0),
+            workflow_history=data.get("workflow_history", []),
+            gaps=data.get("gaps", [])
         )

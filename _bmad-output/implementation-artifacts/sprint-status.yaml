@@ -72,7 +72,7 @@ development_status:
   # Epic 4: Zero-Friction Execution
   epic-4: in-progress
   4-1-three-layer-action-card-one-click-command-copy: done
-  4-2-workflow-history-gap-detection: ready-for-dev
+  4-2-workflow-history-gap-detection: review
   epic-4-retrospective: optional
   
   # Epic 5: AI Coach Integration

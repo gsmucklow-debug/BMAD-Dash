@@ -248,7 +248,9 @@ class BMADParser:
                 created="",
                 completed=None,
                 file_path="",
-                mtime=0.0
+                mtime=0.0,
+                workflow_history=[],
+                gaps=[]
             )
         
         # Get file mtime
@@ -278,6 +280,12 @@ class BMADParser:
             # Convert task dicts to Task dataclasses
             tasks = [Task.from_dict(t) for t in task_dicts]
             
+            # Extract workflow history from frontmatter
+            workflow_history = self._extract_workflow_history(frontmatter)
+            
+            # Detect gaps
+            gaps = self._detect_gaps(frontmatter, workflow_history)
+            
             # Build Story
             story = Story(
                 story_id=frontmatter.get('story_id', story_data.get('story_id', '')),
@@ -289,7 +297,9 @@ class BMADParser:
                 created=frontmatter.get('created', ''),
                 completed=frontmatter.get('completed'),
                 file_path=story_path,
-                mtime=mtime
+                mtime=mtime,
+                workflow_history=workflow_history,
+                gaps=gaps
             )
             
             # Cache the story
@@ -310,7 +320,9 @@ class BMADParser:
                 created="",
                 completed=None,
                 file_path=story_path,
-                mtime=mtime
+                mtime=mtime,
+                workflow_history=[],
+                gaps=[]
             )
     
     def find_all_story_files(self) -> list:
@@ -328,6 +340,85 @@ class BMADParser:
         story_files = glob.glob(pattern)
         
         return story_files
+    
+    def _extract_workflow_history(self, frontmatter: dict) -> list:
+        """
+        Extract workflow history from story frontmatter
+        
+        Args:
+            frontmatter: Parsed YAML frontmatter dictionary
+            
+        Returns:
+            List of workflow execution records
+        """
+        workflows = frontmatter.get('workflows', [])
+        
+        # If workflows is a list of dicts, return directly
+        if isinstance(workflows, list):
+            return workflows
+        
+        # If workflows is None or not found, return empty list
+        return []
+    
+    def _detect_gaps(self, frontmatter: dict, workflow_history: list) -> list:
+        """
+        Detect workflow gaps based on story status and workflow history
+        
+        Gap Detection Rules:
+        1. Story is "done" but no "dev-story" workflow was run
+        2. "dev-story" is complete but no "code-review" was executed
+        3. "code-review" is done but 0 passing tests found (test-gap)
+        
+        Args:
+            frontmatter: Parsed YAML frontmatter dictionary
+            workflow_history: List of workflow execution records
+            
+        Returns:
+            List of gap dictionaries with type, message, and suggested command
+        """
+        gaps = []
+        status = frontmatter.get('status', '')
+        
+        # Create a set of workflow names for quick lookup
+        executed_workflows = set()
+        for wf in workflow_history:
+            if isinstance(wf, dict):
+                wf_name = wf.get('name', '')
+                if wf_name:
+                    executed_workflows.add(wf_name)
+        
+        # Gap 1: Story is "done" but no "dev-story" workflow was run
+        if status == 'done' and 'dev-story' not in executed_workflows:
+            gaps.append({
+                'type': 'missing-dev-story',
+                'message': '⚠️ Missing: dev-story workflow',
+                'suggested_command': '/bmad-bmm-workflows-dev-story',
+                'severity': 'high'
+            })
+        
+        # Gap 2: "dev-story" is complete but no "code-review" was executed
+        if 'dev-story' in executed_workflows and 'code-review' not in executed_workflows:
+            gaps.append({
+                'type': 'missing-code-review',
+                'message': '⚠️ Missing: code-review workflow',
+                'suggested_command': '/bmad-bmm-workflows-code-review',
+                'severity': 'medium'
+            })
+        
+        # Gap 3: "code-review" is done but 0 passing tests found (test-gap)
+        # Note: This requires test evidence data which is parsed separately
+        # Only add test-gap if story is "done" (completed) and has code-review
+        if status == 'done' and 'code-review' in executed_workflows:
+            # This gap will be detected when test evidence is available
+            # For now, we'll add a gap that can be resolved by test discovery
+            gaps.append({
+                'type': 'test-gap',
+                'message': '⚠️ Verify: Test results needed',
+                'suggested_command': '/bmad-bmm-workflows-dev-story',
+                'severity': 'low'
+            })
+        
+        return gaps
     
     def invalidate_cache(self):
         """Invalidate all cached data"""

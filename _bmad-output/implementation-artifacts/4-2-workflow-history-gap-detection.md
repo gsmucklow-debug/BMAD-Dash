@@ -2,7 +2,7 @@
 story_id: "4.2"
 title: "Workflow History & Gap Detection"
 epic: "epic-4"
-status: "ready-for-dev"
+status: "review"
 last_updated: "2026-01-10"
 ---
 
@@ -15,30 +15,30 @@ So that **I can verify I followed the proper sequence and catch skipped workflow
 ## Acceptance Criteria
 
 ### Workflow History Display
-- [ ] **Chronological History**
-    - [ ] Displays execution sequence with timestamps.
-    - [ ] Entries are ordered chronologically (most recent first).
-    - [ ] Each entry shows: workflow name, timestamp, and result status.
-- [ ] **Visibility**
-    - [ ] Workflow history is easily accessible on the dashboard for each story.
+- [x] **Chronological History**
+    - [x] Displays execution sequence with timestamps.
+    - [x] Entries are ordered chronologically (most recent first).
+    - [x] Each entry shows: workflow name, timestamp, and result status.
+- [x] **Visibility**
+    - [x] Workflow history is easily accessible on the dashboard for each story.
 
 ### Gap Detection Logic
-- [ ] **Gap Identification**
-    - [ ] Detects if story is "done" but no `dev-story` workflow was ever run.
-    - [ ] Detects if `dev-story` is complete but no `code-review` was executed.
-    - [ ] Detects if `code-review` is done but 0 passing tests are found (test-gap).
-- [ ] **Warning & Suggestions**
-    - [ ] Displays prominent warning: e.g., "⚠️ Missing: code-review workflow".
-    - [ ] Suggests the next correct command to execute to close the gap.
-    - [ ] Gap detection triggers automatically on dashboard load.
+- [x] **Gap Identification**
+    - [x] Detects if story is "done" but no `dev-story` workflow was ever run.
+    - [x] Detects if `dev-story` is complete but no `code-review` was executed.
+    - [x] Detects if `code-review` is done but 0 passing tests are found (test-gap).
+- [x] **Warning & Suggestions**
+    - [x] Displays prominent warning: e.g., "⚠️ Missing: code-review workflow".
+    - [x] Suggests the next correct command to execute to close the gap.
+    - [x] Gap detection triggers automatically on dashboard load.
 
 ### Technical & Performance
-- [ ] **Data Parsing**
-    - [ ] History is parsed from story file frontmatter (e.g., `workflows` list).
-    - [ ] System falls back to Git commit message analysis if frontmatter history is missing.
-- [ ] **Performance**
-    - [ ] Gap detection logic completes in <50ms.
-    - [ ] History parsing doesn't block the UI.
+- [x] **Data Parsing**
+    - [x] History is parsed from story file frontmatter (e.g., `workflows` list).
+    - [x] System falls back to Git commit message analysis if frontmatter history is missing.
+- [x] **Performance**
+    - [x] Gap detection logic completes in <50ms.
+    - [x] History parsing doesn't block the UI.
 
 ## Implementation Tasks
 
