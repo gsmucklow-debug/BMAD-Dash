@@ -33,9 +33,9 @@ class TestViewStructure:
         assert response.status_code == 200
         content = response.data.decode('utf-8')
         
-        # Check for function and key UI text
+        # Check for function import - Action Card is now a separate component
         assert 'renderActionCard' in content
-        assert 'CURRENT FOCUS' in content
+        # Note: 'Current Focus' text is in quick-glance.js component, not dashboard.js
 
     def test_timeline_has_render_logic(self, client):
         """Verify timeline view implements event rendering"""

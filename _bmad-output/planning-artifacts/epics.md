@@ -747,7 +747,7 @@ So that **I can ask project-aware questions and get answers in real-time**.
 **And** API key is never sent to frontend (stored backend-only - security requirement)
 **And** if Gemini API fails, chat shows error but dashboard still works (NFR21)
 **And** streaming completes without memory leaks (NFR9)
-**And** supports **One-Click Status Transitions** (e.g., AI suggests "Mark as Done" after successful review, and clicking a generated command updates the story file/sprint-status.yaml via a dedicated backend endpoint)
+**And** supports **One-Click Status Transitions** (e.g., AI suggests "Mark as Done" after successful review, and clicking a generated command updates the story file/sprint-status.yaml via a dedicated backend endpoint, intelligently track tasks, stories, epics and tasks)
 
 ### Story 5.2: Project-Aware Q&A & Suggested Prompts
 
