@@ -93,13 +93,31 @@ class GitCorrelator:
         if not normalized_id:
             logger.warning(f"Could not extract story ID from: {story_id}")
             return []
+            
+        # Create flexible ID pattern that matches 1.3 or 1-3
+        # If normalized_id is "1.3", flexible is "1[.\-_]3"
+        parts = normalized_id.split('.')
+        if len(parts) == 2:
+            flexible_id = f"{parts[0]}[.\\-_]{parts[1]}"
+        else:
+            flexible_id = re.escape(normalized_id)
         
         # Build patterns (case-insensitive)
         patterns = [
-            re.compile(rf'story[-_\s]*{re.escape(normalized_id)}', re.IGNORECASE),  # story-1.3, story_1.3, story 1.3
-            re.compile(rf'\[{re.escape(normalized_id)}\]', re.IGNORECASE),  # [1.3]
-            re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\(story[-_\s]*{re.escape(normalized_id)}\)', re.IGNORECASE),  # feat(story-1.3)
-            re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\({re.escape(normalized_id)}\)', re.IGNORECASE),  # feat(1.3)
+            # Matches: "Story 1.3", "Story: 1.3", "Story-1.3", "Story 1-3"
+            re.compile(rf'story[:\s\-_]*{flexible_id}', re.IGNORECASE),
+            
+            # Matches: "[1.3]", "[1-3]"
+            re.compile(rf'\[{flexible_id}\]', re.IGNORECASE),
+            
+            # Matches: "feat(story-1.3)", "fix(Story: 1.3)"
+            re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\(story[:\s\-_]*{flexible_id}\)', re.IGNORECASE),
+            
+            # Matches: "feat(1.3)", "fix(1-3)"
+            re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\({flexible_id}\)', re.IGNORECASE),
+            
+            # Helper for explicit "Ref: 1.3" or "Refs: 1.3"
+            re.compile(rf'refs?[:\s\-_]*{flexible_id}', re.IGNORECASE),
         ]
         
         return patterns

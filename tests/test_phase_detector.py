@@ -9,6 +9,7 @@ from backend.services.phase_detector import PhaseDetector
 
 class TestPhaseDetection:
     """Test phase detection logic"""
+    story_id = "1.2"
     
     def test_detect_implementation_phase(self, tmp_path):
         """Test detecting Implementation phase"""

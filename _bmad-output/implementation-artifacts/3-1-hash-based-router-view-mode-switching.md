@@ -4,6 +4,7 @@ title: "Hash-Based Router & View Mode Switching"
 epic: "epic-3"
 status: "done"
 last_updated: "2026-01-10"
+completed: "2026-01-10"
 ---
 
 # Story 3.1: Hash-Based Router & View Mode Switching

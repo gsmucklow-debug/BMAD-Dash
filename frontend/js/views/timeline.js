@@ -1,7 +1,9 @@
 /**
  * BMAD Dash - Timeline View
- * Timeline view placeholder (to be implemented in Story 3.2)
+ * Displays a vertical timeline of project events (derived from story updates)
  */
+
+import { render as renderBreadcrumb } from '../components/breadcrumb.js';
 
 /**
  * Render the Timeline View
@@ -14,17 +16,120 @@ export function render(data) {
         return;
     }
 
+    renderBreadcrumb(data.breadcrumb);
+
+    const allStories = [];
+    if (data.kanban) {
+        Object.values(data.kanban).forEach(list => allStories.push(...list));
+    }
+
+    const events = getTimelineEvents(allStories);
+
     container.innerHTML = `
-        <div class="text-center text-bmad-text p-12">
-            <div class="max-w-md mx-auto bg-bmad-gray rounded-lg p-8">
-                <svg class="w-16 h-16 mx-auto mb-4 text-bmad-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <h2 class="text-2xl font-bold mb-2">Timeline View Coming Soon</h2>
-                <p class="text-bmad-muted">
-                    The timeline view will be implemented in Story 3.2: Kanban Board & Timeline View
-                </p>
+        <div class="max-w-4xl mx-auto p-6 h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-bmad-text">Project Timeline</h1>
+                <span class="text-xs text-bmad-muted bg-bmad-surface px-2 py-1 rounded">Derived from Story Status</span>
+            </div>
+            
+            <div class="relative border-l border-bmad-gray ml-3 space-y-8 pb-12">
+                ${events.length ? events.map(event => renderTimelineEvent(event)).join('') : renderEmptyState()}
             </div>
         </div>
+    `;
+}
+
+function getTimelineEvents(stories) {
+    const events = [];
+
+    stories.forEach(story => {
+        // Add "Completed" event for done stories
+        if (['done', 'complete', 'closed'].includes(story.status?.toLowerCase())) {
+            events.push({
+                date: story.last_updated || 'Recently',
+                title: `Completed ${story.id}`,
+                description: story.title,
+                type: 'completion',
+                storyId: story.id
+            });
+        }
+        // Add "In Progress" event for active stories
+        else if (['in-progress', 'active'].includes(story.status?.toLowerCase())) {
+            events.push({
+                date: story.last_updated || 'Recently',
+                title: `Started working on ${story.id}`,
+                description: story.title,
+                type: 'progress',
+                storyId: story.id
+            });
+        }
+    });
+
+    // Mock generic "Project Initialized" event
+    events.push({
+        date: '2026-01-01',
+        title: 'Project Initialized',
+        description: 'BMAD Project Scaffold creation',
+        type: 'milestone',
+        storyId: '0.1'
+    });
+
+    // Sort events: Newest first (Reverse Chronological)
+    // 1. Sort by Date Descending
+    // 2. Sort by Story ID Descending (as proxy for time if dates match)
+    events.sort((a, b) => {
+        const dateA = normalizeDate(a.date);
+        const dateB = normalizeDate(b.date);
+
+        if (dateA > dateB) return -1;
+        if (dateA < dateB) return 1;
+
+        // If dates are equal (or both 'Recently'), fall back to Story ID
+        // Parse ID "1.2" -> 1.2 float for comparison
+        const idA = parseFloat(a.storyId) || 0;
+        const idB = parseFloat(b.storyId) || 0;
+
+        return idB - idA; // Descending ID
+    });
+
+    return events;
+}
+
+function normalizeDate(dateStr) {
+    if (!dateStr || dateStr === 'Recently') {
+        // Return a future date to ensure "Recently" stays at top
+        return '9999-12-31';
+    }
+    return dateStr;
+}
+
+function renderTimelineEvent(event) {
+    let iconColor = 'bg-bmad-gray';
+    if (event.type === 'completion') iconColor = 'bg-green-500';
+    if (event.type === 'progress') iconColor = 'bg-bmad-accent';
+    if (event.type === 'milestone') iconColor = 'bg-purple-500';
+
+    return `
+        <div class="ml-8 relative group">
+            <span class="absolute -left-[41px] top-1 flex items-center justify-center w-6 h-6 bg-bmad-surface rounded-full ring-4 ring-bmad-surface shadow-sm text-bmad-text">
+                <span class="${iconColor} w-2.5 h-2.5 rounded-full block"></span>
+            </span>
+            <div class="bg-bmad-surface border border-bmad-gray p-4 rounded-lg shadow-sm hover:border-bmad-accent/30 transition-colors">
+                <div class="flex justify-between items-start mb-1">
+                    <h3 class="text-lg font-semibold text-bmad-text group-hover:text-white transition-colors">
+                        ${event.title}
+                    </h3>
+                    <time class="text-xs text-bmad-muted font-mono bg-bmad-gray/20 px-1.5 py-0.5 rounded">${event.date}</time>
+                </div>
+                <p class="text-sm text-bmad-muted-foreground">${event.description}</p>
+                 ${event.storyId ? `<div class="mt-2 text-xs font-mono text-bmad-muted">Ref: ${event.storyId}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderEmptyState() {
+    return `
+        <div class="ml-8 text-bmad-muted italic">No timeline events found.</div>
     `;
 }

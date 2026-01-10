@@ -43,6 +43,7 @@ def mock_project_data():
 
 class TestFrontendServing:
     """Test that Flask serves frontend files correctly"""
+    story_id = "1.4"
     
     def test_index_html_served(self, client):
         """Test that index.html is served at root path"""
@@ -80,6 +81,7 @@ class TestFrontendServing:
 
 class TestDashboardAPIIntegration:
     """Test frontend integration with dashboard API"""
+    story_id = "1.3"
     
     def test_dashboard_endpoint_returns_breadcrumb(self, client, mock_project_data):
         """Test that /api/dashboard returns breadcrumb data"""
@@ -114,6 +116,7 @@ class TestDashboardAPIIntegration:
 
 class TestFrontendStructure:
     """Test frontend HTML structure and elements"""
+    story_id = "1.4"
     
     def test_dark_theme_applied(self, client):
         """Test that dark theme class is present"""
@@ -215,6 +218,7 @@ class TestStaticFileRouting:
 
 class TestQuickGlanceComponent:
     """Test Quick Glance component functionality"""
+    story_id = "1.5"
     
     def test_quick_glance_js_served(self, client):
         """Test that quick-glance component is accessible"""

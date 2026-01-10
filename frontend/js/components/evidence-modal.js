@@ -145,7 +145,7 @@ function renderGitContent(data) {
         <div class="border-l-2 border-bmad-purple pl-4 mb-4 last:mb-0 relative">
             <div class="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-bmad-purple"></div>
             <div class="flex justify-between items-start mb-1">
-                <div class="font-mono text-xs text-bmad-purple-light">${commit.hash.substring(0, 7)}</div>
+                <div class="font-mono text-xs text-bmad-purple-light">${commit.sha.substring(0, 7)}</div>
                 <div class="text-xs text-bmad-muted" title="${commit.timestamp}">${formatRelativeTime(commit.timestamp)}</div>
             </div>
             <div class="text-bmad-text text-sm font-medium mb-1">${escapeHtml(commit.message)}</div>

@@ -1,6 +1,8 @@
 """
 Frontend Router Tests
 Tests hash-based routing, view switching, and navigation
+
+Story 3.1
 """
 
 import pytest

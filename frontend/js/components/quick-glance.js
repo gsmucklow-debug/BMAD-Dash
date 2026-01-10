@@ -30,7 +30,7 @@ export function render(data) {
     const quickGlanceHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-bmad-gray/50 p-4 rounded-lg border border-bmad-gray">
             ${renderDoneSection(done)}
-            ${renderCurrentSection(current)}
+            ${renderCurrentSection(current, next)}
             ${renderNextSection(next)}
         </div>
     `;
@@ -40,6 +40,11 @@ export function render(data) {
     // Initialize badges for current story if available and project root exists
     if (current && current.story_id && data.project && data.project.root_path) {
         updateBadges('evidence-badges-container', current.story_id, data.project.root_path);
+    }
+
+    // Initialize badges for done story if available and project root exists
+    if (done && done.story_id && data.project && data.project.root_path) {
+        updateBadges('evidence-badges-done', done.story_id, data.project.root_path);
     }
 }
 
@@ -66,11 +71,16 @@ function renderDoneSection(done) {
             <span class="text-xs uppercase tracking-wider text-bmad-muted mb-1">Last Completed</span>
             <div class="font-medium text-bmad-text truncate">${storyId ? `${storyId}: ` : ''}${title}</div>
             ${done.completed ? `
-                <div class="text-xs text-bmad-green mt-1 flex items-center">
+                <div class="text-xs text-bmad-green mt-1 flex items-center mb-2">
                     <span class="w-2 h-2 rounded-full bg-bmad-green mr-2"></span>
                     Done
                 </div>
             ` : ''}
+            
+            <!-- Evidence Badges for Done Story -->
+            <div id="evidence-badges-done" class="mt-auto">
+                ${getBadgesSkeletonHTML()}
+            </div>
         </div>
     `;
 }
@@ -78,10 +88,45 @@ function renderDoneSection(done) {
 /**
  * Render Current section with progress bar
  * @param {Object} current - Current story data
+ * @param {Object|null} next - Next story data (for empty state prompts)
  * @returns {string} HTML for Current section
  */
-function renderCurrentSection(current) {
+function renderCurrentSection(current, next) {
     if (!current) {
+        // If no active story, suggest the next one
+        if (next) {
+            const nextTitle = escapeHtml(next.title || '');
+            const nextId = escapeHtml(next.story_id || '');
+            const nextStatus = next.status; // already string or undefined
+
+            let message = "No active story";
+            let subtext = "";
+            let actionText = "";
+
+            if (nextStatus === 'backlog') {
+                message = "Planning Required";
+                subtext = `Next: ${nextId}`;
+                actionText = "Awaiting Write/Plan";
+            } else if (nextStatus === 'ready-for-dev') {
+                message = "Ready to Build";
+                subtext = `Next: ${nextId}`;
+                actionText = "Story Written - Ready for Dev";
+            }
+
+            return `
+                <div class="flex flex-col relative pl-4 border-l border-bmad-muted/30">
+                    <span class="text-xs uppercase tracking-wider text-bmad-accent mb-1 font-bold">Current Focus</span>
+                    <div class="font-bold text-white text-md truncate">${message}</div>
+                    <div class="text-sm text-bmad-muted mt-1 truncate">${subtext}</div>
+                    
+                    <div class="mt-2 text-xs font-medium text-bmad-blue bg-bmad-blue/10 px-2 py-1 rounded w-fit">
+                        ${actionText}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fallback if no next story either
         return `
             <div class="flex flex-col relative pl-4 border-l border-bmad-muted/30">
                 <span class="text-xs uppercase tracking-wider text-bmad-accent mb-1 font-bold">Current Focus</span>

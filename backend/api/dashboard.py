@@ -135,30 +135,46 @@ def build_breadcrumb(project) -> Dict[str, Any]:
         "task": None
     }
     
-    # Find current epic (prioritize epic with active stories, not just status)
-    current_epic = None
+    # Strategy: Align Breadcrumb with Quick Glance (Current > Next > Fallback)
     
-    # First, try to find epic with in-progress or ready-for-dev story
+    # 1. Try to find "Current" story (in-progress / review)
+    # This aligns with Quick Glance "Current Focus"
+    target_story = None
     for epic in project.epics:
-        active_stories = [s for s in epic.stories if s.status in ["in-progress", "ready-for-dev", "review"]]
-        if active_stories:
-            current_epic = epic
+        for story in epic.stories:
+            if story.status in ["in-progress", "review"]:
+                target_story = story
+                current_epic = epic
+                break
+        if target_story: 
             break
-    
-    # Fallback: find first epic with status "in-progress"
-    if not current_epic:
+            
+    # 2. If no current, find "Ready for Dev" (Next up)
+    if not target_story:
         for epic in project.epics:
-            if epic.status == "in-progress":
-                current_epic = epic
+            for story in epic.stories:
+                if story.status == "ready-for-dev":
+                    target_story = story
+                    current_epic = epic
+                    break
+            if target_story: 
                 break
-    
-    # Last resort: find first epic with incomplete stories
-    if not current_epic:
+
+    # 3. If no ready, find first "Backlog" or "Todo" (Up Next)
+    # This aligns with Quick Glance "Up Next"
+    if not target_story:
         for epic in project.epics:
-            incomplete_stories = [s for s in epic.stories if s.status != "done"]
-            if incomplete_stories:
-                current_epic = epic
+            for story in epic.stories:
+                if story.status in ["todo", "backlog"] and not story.completed:
+                    target_story = story
+                    current_epic = epic
+                    break
+            if target_story: 
                 break
+
+    # 4. Fallback: Last completed epic (if everything is done)
+    if not current_epic and project.epics:
+        current_epic = project.epics[-1]
     
     if current_epic:
         breadcrumb["epic"] = {
@@ -228,14 +244,25 @@ def build_quick_glance(project) -> Dict[str, Any]:
     if done_stories:
         # Sort by completion date (most recent first), then by story_id (highest first) as tiebreaker
         def sort_key(story):
-            # Parse story_id (e.g., "2.4" -> (2, 4)) for proper numeric comparison
+            # Parse story_id (e.g., "3.1" -> (3, 1)) for proper numeric comparison
             try:
                 parts = story.story_id.split('.')
                 epic_num = int(parts[0]) if len(parts) > 0 else 0
                 story_num = int(parts[1]) if len(parts) > 1 else 0
-                return (story.completed, epic_num, story_num)
+                story_tuple = (epic_num, story_num)
             except (ValueError, AttributeError):
-                return (story.completed, 0, 0)
+                story_tuple = (0, 0)
+            
+            # Key priority:
+            # 1. Completion Date (if exists)
+            # 2. Epic Number
+            # 3. Story Number
+            # Use '0000-00-00' for missing dates so they sort last if reverse=True, 
+            # BUT we actually want "done" stories without dates to potentially be recent if date was just missed.
+            # A safer bet is: if date is missing, rely on story_id (assuming higher IDs are newer).
+            date_val = story.completed if story.completed else "0000-00-00"
+            
+            return (date_val, story_tuple)
         
         done_stories.sort(key=sort_key, reverse=True)
         done_story = done_stories[0]
@@ -284,7 +311,18 @@ def build_quick_glance(project) -> Dict[str, Any]:
             if next_story.status in ["backlog", "todo", "ready-for-dev"]:
                 quick_glance["next"] = {
                     "story_id": next_story.story_id,
-                    "title": next_story.title
+                    "title": next_story.title,
+                    "status": next_story.status
+                }
+                break
+    else:
+        # No current story - find first backlog/todo story for "next"
+        for story in all_stories:
+            if story.status in ["backlog", "todo"]:
+                quick_glance["next"] = {
+                    "story_id": story.story_id,
+                    "title": story.title,
+                    "status": story.status
                 }
                 break
     
@@ -325,9 +363,12 @@ def build_kanban(project) -> Dict[str, List[Dict[str, Any]]]:
     for epic in project.epics:
         for story in epic.stories:
             story_data = {
-                "story_id": story.story_id,
+                "story_id": story.story_id, # Use story_id
+                "id": story.story_id,       # Alias for frontend compatibility
                 "title": story.title,
                 "epic": story.epic,
+                "status": story.status,
+                "last_updated": story.last_updated if hasattr(story, 'last_updated') else None,
                 "tasks": [task.to_dict() for task in story.tasks]
             }
             

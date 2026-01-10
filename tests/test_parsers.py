@@ -12,6 +12,7 @@ from backend.parsers.bmad_parser import BMADParser
 
 class TestYAMLParser:
     """Test YAML frontmatter parser"""
+    story_id = "1.1"
     
     def test_parse_valid_frontmatter(self):
         """Test parsing valid YAML frontmatter"""
@@ -80,6 +81,7 @@ epics:
 
 class TestMarkdownParser:
     """Test Markdown content parser"""
+    story_id = "1.1"
     
     def test_extract_tasks(self):
         """Test extracting tasks from markdown"""
@@ -148,6 +150,7 @@ class TestMarkdownParser:
 
 class TestBMADParser:
     """Test main BMAD parser orchestrator"""
+    story_id = "1.1"
     
     def test_parse_project_basic(self, tmp_path):
         """Test basic project parsing"""

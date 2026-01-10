@@ -40,6 +40,10 @@ def create_app():
     from backend.api.test_evidence import test_evidence_bp
     app.register_blueprint(test_evidence_bp)
     
+    # Register Review evidence blueprint (Story 3.2 Addendum)
+    from backend.api.review_evidence import review_evidence_bp
+    app.register_blueprint(review_evidence_bp)
+    
     # Register other blueprints (will be added in later stories)
     # from backend.api import ai_chat, refresh
     
