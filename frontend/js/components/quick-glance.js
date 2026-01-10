@@ -26,17 +26,7 @@ export function render(data) {
     // Safely destructure with defaults
     const { done = null, current = null, next = null } = data.quick_glance || {};
 
-    // Handle empty state (no current story)
-    if (!current) {
-        container.innerHTML = `
-            <div class="bg-bmad-gray/50 p-4 rounded-lg border border-bmad-gray">
-                <p class="text-bmad-muted text-sm text-center">No active story</p>
-            </div>
-        `;
-        return;
-    }
-
-    // Build HTML structure
+    // Build HTML structure (show all sections even if current is null)
     const quickGlanceHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-bmad-gray/50 p-4 rounded-lg border border-bmad-gray">
             ${renderDoneSection(done)}

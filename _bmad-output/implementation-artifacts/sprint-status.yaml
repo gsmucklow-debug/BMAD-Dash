@@ -63,8 +63,8 @@ development_status:
   epic-2-retrospective: optional
   
   # Epic 3: Multi-View Dashboard
-  epic-3: backlog
-  3-1-hash-based-router-view-mode-switching: backlog
+  epic-3: in-progress
+  3-1-hash-based-router-view-mode-switching: done
   3-2-kanban-board-timeline-view: backlog
   3-3-minimal-list-view-manual-refresh: backlog
   epic-3-retrospective: optional

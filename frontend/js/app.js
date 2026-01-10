@@ -3,11 +3,20 @@
  * Initializes the application, fetches dashboard data, and orchestrates component rendering
  */
 
+import { Router } from './router.js';
 import { render as renderBreadcrumb } from './components/breadcrumb.js';
 import { render as renderQuickGlance } from './components/quick-glance.js';
+import { render as renderViewSwitcher, updateActive } from './components/view-switcher.js';
 import { init as initEvidenceModal } from './components/evidence-modal.js';
+import { render as renderDashboard } from './views/dashboard.js';
+import { render as renderTimeline } from './views/timeline.js';
+import { render as renderList } from './views/list.js';
 
-const DEFAULT_PROJECT_ROOT = 'F:/BMAD Dash';
+const DEFAULT_PROJECT_ROOT = '';
+
+// Global state
+let router = null;
+let dashboardData = null;
 
 /**
  * Initialize the application on page load
@@ -18,21 +27,24 @@ async function init() {
     // Initialize modal component (Story 2.4)
     initEvidenceModal();
 
+    // Initialize router (Story 3.1)
+    router = new Router();
+    setupRoutes();
+
     // Load project root from localStorage or use default
     const projectRoot = localStorage.getItem('bmad_project_root') || DEFAULT_PROJECT_ROOT;
     document.getElementById('project-root-input').value = projectRoot;
 
     try {
         showLoading();
-        const data = await fetchDashboardData(projectRoot);
+        dashboardData = await fetchDashboardData(projectRoot);
         hideLoading();
 
-        // Render breadcrumb navigation
-        renderBreadcrumb(data.breadcrumb);
+        // Render view switcher (Story 3.1)
+        renderViewSwitcher(router, router.getCurrentRoute());
 
-        // Render Quick Glance (Story 1.5)
-        renderQuickGlance(data);
-        // Future: render Kanban (Story 3.2)
+        // Router will handle view rendering based on hash
+        router.handleRoute();
 
         console.timeEnd('Dashboard Load Time');
 
@@ -46,6 +58,34 @@ async function init() {
         showError(error.message);
         console.error('Dashboard load failed:', error);
     }
+}
+
+/**
+ * Setup router routes (Story 3.1)
+ */
+function setupRoutes() {
+    router.register('/dashboard', () => {
+        if (dashboardData) {
+            renderDashboard(dashboardData);
+            updateActive('/dashboard');
+        }
+    });
+
+    router.register('/timeline', () => {
+        if (dashboardData) {
+            renderTimeline(dashboardData);
+            updateActive('/timeline');
+        }
+    });
+
+    router.register('/list', () => {
+        if (dashboardData) {
+            renderList(dashboardData);
+            updateActive('/list');
+        }
+    });
+
+    router.setDefault('/dashboard');
 }
 
 /**
@@ -114,12 +154,11 @@ async function loadProject(projectRoot) {
 
     try {
         showLoading();
-        const data = await fetchDashboardData(projectRoot);
+        dashboardData = await fetchDashboardData(projectRoot);
         hideLoading();
 
-        // Render components
-        renderBreadcrumb(data.breadcrumb);
-        renderQuickGlance(data);
+        // Re-render current view with new data
+        router.handleRoute();
 
         console.log('Project loaded successfully:', projectRoot);
     } catch (error) {

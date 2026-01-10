@@ -135,15 +135,25 @@ def build_breadcrumb(project) -> Dict[str, Any]:
         "task": None
     }
     
-    # Find current epic (in-progress or first with incomplete stories)
+    # Find current epic (prioritize epic with active stories, not just status)
     current_epic = None
+    
+    # First, try to find epic with in-progress or ready-for-dev story
     for epic in project.epics:
-        if epic.status == "in-progress":
+        active_stories = [s for s in epic.stories if s.status in ["in-progress", "ready-for-dev", "review"]]
+        if active_stories:
             current_epic = epic
             break
     
+    # Fallback: find first epic with status "in-progress"
     if not current_epic:
-        # Find first epic with incomplete stories
+        for epic in project.epics:
+            if epic.status == "in-progress":
+                current_epic = epic
+                break
+    
+    # Last resort: find first epic with incomplete stories
+    if not current_epic:
         for epic in project.epics:
             incomplete_stories = [s for s in epic.stories if s.status != "done"]
             if incomplete_stories:
@@ -216,8 +226,18 @@ def build_quick_glance(project) -> Dict[str, Any]:
     # Find done story (last completed)
     done_stories = [s for s in all_stories if s.status == "done" and s.completed]
     if done_stories:
-        # Sort by completion date (most recent first)
-        done_stories.sort(key=lambda s: s.completed, reverse=True)
+        # Sort by completion date (most recent first), then by story_id (highest first) as tiebreaker
+        def sort_key(story):
+            # Parse story_id (e.g., "2.4" -> (2, 4)) for proper numeric comparison
+            try:
+                parts = story.story_id.split('.')
+                epic_num = int(parts[0]) if len(parts) > 0 else 0
+                story_num = int(parts[1]) if len(parts) > 1 else 0
+                return (story.completed, epic_num, story_num)
+            except (ValueError, AttributeError):
+                return (story.completed, 0, 0)
+        
+        done_stories.sort(key=sort_key, reverse=True)
         done_story = done_stories[0]
         quick_glance["done"] = {
             "story_id": done_story.story_id,
@@ -225,12 +245,19 @@ def build_quick_glance(project) -> Dict[str, Any]:
             "completed": done_story.completed
         }
     
-    # Find current story (in-progress or ready-for-dev)
+    # Find current story (in-progress, review, or ready-for-dev)
+    # Priority order: in-progress > review > ready-for-dev
     current_story = None
     for story in all_stories:
         if story.status == "in-progress":
             current_story = story
             break
+    
+    if not current_story:
+        for story in all_stories:
+            if story.status == "review":
+                current_story = story
+                break
     
     if not current_story:
         for story in all_stories:
