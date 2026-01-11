@@ -26,16 +26,26 @@ class Story:
     workflow_history: List[Dict[str, Any]] = field(default_factory=list)  # Workflow execution history
     gaps: List[Dict[str, Any]] = field(default_factory=list)  # Detected workflow gaps
     last_updated: Optional[str] = None  # ISO date from frontmatter
+    evidence: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON responses"""
+        # Calculate task stats
+        total_tasks = len(self.tasks)
+        done_tasks = sum(1 for t in self.tasks if t.status == "done")
+        
         return {
             "story_id": self.story_id,
             "story_key": self.story_key,
             "title": self.title,
             "status": self.status,
             "epic": self.epic,
-            "tasks": [task.to_dict() for task in self.tasks],
+            "tasks": {
+                "done": done_tasks,
+                "total": total_tasks,
+                "items": [task.to_dict() for task in self.tasks]
+            },
+            "evidence": self.evidence,
             "created": self.created,
             "completed": self.completed,
             "file_path": self.file_path,
@@ -49,13 +59,23 @@ class Story:
     def from_dict(cls, data: dict) -> 'Story':
         """Deserialize from dictionary"""
         from .task import Task
+        
+        tasks_data = data.get("tasks", [])
+        if isinstance(tasks_data, dict):
+            # Handle new object format
+            tasks_list = tasks_data.get("items", [])
+        else:
+            # Handle legacy list format
+            tasks_list = tasks_data
+
         return cls(
             story_id=data.get("story_id", ""),
             story_key=data.get("story_key", ""),
             title=data.get("title", ""),
             status=data.get("status", "backlog"),
             epic=data.get("epic", 0),
-            tasks=[Task.from_dict(t) for t in data.get("tasks", [])],
+            tasks=[Task.from_dict(t) for t in tasks_list],
+            evidence=data.get("evidence", {}),
             created=data.get("created", ""),
             completed=data.get("completed"),
             file_path=data.get("file_path", ""),

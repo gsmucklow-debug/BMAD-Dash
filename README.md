@@ -46,3 +46,20 @@ npm run watch:css
 - Frontend: Vanilla JavaScript + Tailwind CSS
 - No database - file-based parsing only
 - Localhost-only deployment
+
+## Project State
+
+BMAD Dash maintains a running cache of the project state to optimize performance and provide context to the AI Coach.
+
+- **File**: `_bmad-output/implementation-artifacts/project-state.json`
+- **Purpose**: Source of truth for project status, evidence, and AI context.
+- **Structure**:
+  ```json
+  {
+    "version": "1.0",
+    "project": { ... },
+    "current": { ... },
+    "epics": { ... },
+    "stories": { ... }
+  }
+  ```

@@ -6,8 +6,10 @@ Integrates Gemini 3 Flash for contextual guidance
 import google.generativeai as genai
 from typing import Generator, Dict, Any, Optional
 import json
+import os
 from backend.services.bmad_version_detector import BMADVersionDetector
 from backend.services.validation_service import ValidationService
+from backend.services.project_state_cache import ProjectStateCache
 
 
 class AICoach:
@@ -29,6 +31,13 @@ class AICoach:
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         self.version_detector = BMADVersionDetector(project_root) if project_root else None
         self.validation_service = ValidationService(project_root) if project_root else None
+        
+        # Initialize ProjectStateCache (Story 5.4)
+        self.project_state_cache = None
+        if project_root:
+            cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
+            self.project_state_cache = ProjectStateCache(cache_file)
+            
         self.project_root = project_root
     
     def _format_validation_summary(self, validation_result) -> str:
@@ -124,37 +133,50 @@ class AICoach:
 
     def _build_system_prompt(self, context: Dict[str, Any]) -> str:
         """
-        Constructs the system prompt with BMAD context
+        Constructs the system prompt with BMAD context and full Project State
 
         Args:
-            context: Dictionary containing project context (phase, epic, story, task, status, titles, tasks)
+            context: Dictionary containing project context 
 
         Returns:
             System prompt string
         """
+        # Load full project state if available (Story 5.4)
+        project_state_context = ""
+        if self.project_state_cache and self.project_root:
+            try:
+                # Sync to ensure we satisfy "all epics, all stories" requirement
+                self.project_state_cache.sync(self.project_root)
+                state = self.project_state_cache.cache_data
+                if state:
+                    state_dict = state.to_dict()
+                    # Convert to JSON string for prompt
+                    project_state_json = json.dumps(state_dict, indent=2)
+                    project_state_context = f"\n\nFULL PROJECT STATE (Source of Truth):\n```json\n{project_state_json}\n```"
+            except Exception as e:
+                # Fallback to limited context if cache fails
+                project_state_context = f"\n\nProject State Error: {str(e)}"
+
         phase = context.get('phase', 'Unknown')
         epic_id = context.get('epic_id', context.get('epic', 'Unknown'))
+        # ... (rest of simple context extraction for fallback/immediate context) ...
         epic_title = context.get('epic_title', '')
         story_id = context.get('story_id', context.get('story', 'Unknown'))
         story_title = context.get('story_title', '')
         story_status = context.get('story_status', 'Unknown')
-        task = context.get('task', 'Unknown')
-
-        # Check if validation results should be included (Story 5.3 AC2)
-        validation_summary = context.get('validation_summary', '')
-        
-        # Task-level details (Story 5.2 AC4)
-        task_progress = context.get('taskProgress', '0/0 tasks')
+        task_progress = context.get('taskProgress', '0/0 tasks') # Fix definition order
         current_task = context.get('currentTask', 'No active task')
         current_task_status = context.get('currentTaskStatus', 'unknown')
         tasks = context.get('tasks', [])
         acceptance_criteria = context.get('acceptanceCriteria', [])
+
+        # Check if validation results should be included (Story 5.3 AC2)
+        validation_summary = context.get('validation_summary', '')
         
         # Format task list for system prompt
         task_list_str = ""
         if tasks:
             done_tasks = [t for t in tasks if t.get('status') == 'done']
-            todo_tasks = [t for t in tasks if t.get('status') in ['todo', 'in-progress']]
             task_list_str = f"\n\nTask Details ({len(done_tasks)}/{len(tasks)} complete):"
             for t in tasks:
                 status_icon = "✓" if t.get('status') == 'done' else "○"
@@ -190,6 +212,7 @@ Current Project Context:
 - Story Status: {story_status}
 - Task Progress: {task_progress}
 - Current Task: {current_task} [{current_task_status}]{task_list_str}{ac_str}{validation_context}
+{project_state_context}
 
 BMAD Method Principles:
 1. Brain-Friendly Design: Minimize cognitive load, use progressive disclosure

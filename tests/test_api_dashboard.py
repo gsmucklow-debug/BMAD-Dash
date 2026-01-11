@@ -231,65 +231,9 @@ class TestDashboardEndpoint:
                 if column_name == 'done':
                     assert 'completed' in story or True  # Some might not have completion date
     
-    def test_cache_hit_scenario(self, client, bmad_dash_project_root, clear_cache):
-        """
-        Test cache hit scenario (second request faster)
-        
-        Acceptance Criteria:
-        - First request parses project (cache miss)
-        - Second request uses cache (cache hit)
-        - Both requests return same data
-        - Second request is faster
-        """
-        # First request (cache miss)
-        start1 = time.time()
-        response1 = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
-        duration1 = time.time() - start1
-        
-        assert response1.status_code == 200
-        data1 = response1.get_json()
-        
-        # Second request (cache hit)
-        start2 = time.time()
-        response2 = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
-        duration2 = time.time() - start2
-        
-        assert response2.status_code == 200
-        data2 = response2.get_json()
-        
-        # Data should be identical
-        assert data1 == data2
-        
-        # Second request should be faster (cache hit)
-        # Note: This might not always be true in test environment, but cache is being used
-        # We can verify cache is working by checking logs or cache size
-        assert _cache.size() > 0  # Cache should have entries
-    
-    def test_cache_invalidation_on_file_change(self, client, bmad_dash_project_root, clear_cache):
-        """
-        Test cache invalidation when sprint-status.yaml changes
-        
-        Acceptance Criteria:
-        - First request caches data
-        - If file mtime changes, cache is invalidated
-        - New request parses fresh data
-        
-        Note: We simulate this by manually invalidating cache
-        """
-        # First request (populates cache)
-        response1 = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
-        assert response1.status_code == 200
-        assert _cache.size() > 0
-        
-        # Manually invalidate to simulate file change
-        _cache.invalidate_all()
-        
-        # Second request (cache miss due to invalidation)
-        response2 = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
-        assert response2.status_code == 200
-        
-        # Cache should be repopulated
-        assert _cache.size() > 0
+    # Obsolete tests removed (test_cache_hit_scenario, test_cache_invalidation_on_file_change)
+    # The caching mechanism has moved to project-state.json and ProjectStateCache
+
     
     def test_response_time_requirement(self, client, bmad_dash_project_root, clear_cache):
         """

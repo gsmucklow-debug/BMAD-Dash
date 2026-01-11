@@ -226,6 +226,18 @@ class BMADParser:
         
         return epic
     
+    def parse_story(self, story_key: str) -> Optional[Story]:
+        """
+        Parse a single story by key
+        
+        Args:
+            story_key: Story key (e.g. "1-1-story-name")
+            
+        Returns:
+            Story object or None
+        """
+        return self._parse_story_file({'story_key': story_key})
+
     def _parse_story_file(self, story_data: dict) -> Optional[Story]:
         """
         Parse a story markdown file

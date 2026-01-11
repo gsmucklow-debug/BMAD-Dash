@@ -110,6 +110,35 @@ function renderStoryCard(story, projectRoot) {
         formattedEpic = epicStr.startsWith('epic-') ? epicStr : `epic-${epicStr}`;
     }
 
+    const totalTasks = story.tasks ? story.tasks.length : 0;
+    const officialDone = story.tasks ? story.tasks.filter(t => t.status === 'done' && !t.inferred).length : 0;
+    const inferredDone = story.tasks ? story.tasks.filter(t => t.inferred).length : 0;
+    const totalDone = officialDone + inferredDone;
+
+    let progressHtml = '';
+    if (totalTasks > 0) {
+        if (inferredDone > 0) {
+            progressHtml = `
+                <div class="mt-2 text-xs text-bmad-muted group/progress relative cursor-help">
+                    <div class="flex items-center gap-1">
+                        <span>${totalDone}/${totalTasks} tasks</span>
+                        <span class="text-[10px] text-bmad-accent">(${officialDone} off., ${inferredDone} inf.)</span>
+                    </div>
+                     <!-- Tooltip -->
+                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover/progress:block w-48 bg-gray-900 text-white text-[10px] p-2 rounded shadow-lg z-10">
+                        ${inferredDone} tasks detected complete via evidence (Git commits) but not marked in story file.
+                    </div>
+                </div>
+            `;
+        } else {
+            progressHtml = `
+                <div class="mt-2 text-xs text-bmad-muted">
+                    ${totalDone}/${totalTasks} tasks
+                </div>
+            `;
+        }
+    }
+
     return `
         <div class="bg-bmad-surface hover:bg-bmad-surface-hover border border-bmad-gray hover:border-bmad-accent/50 rounded p-3 transition-all cursor-pointer group shadow-sm">
             <div class="flex justify-between items-start mb-2">
@@ -118,12 +147,14 @@ function renderStoryCard(story, projectRoot) {
             </div>
             <h4 class="text-sm font-medium text-bmad-text mb-2 line-clamp-2">${story.title}</h4>
             
+            ${progressHtml}
+
              <!-- We use a specific ID to avoid conflict with top card if present. 
                   Actually, let's just use the same ID logic for now, noticing the conflict.
                   Correction: create a unique class or just accept the limitation for this sprint.
                   Better: Use 'board-badges-${story.id}' and update the loop.
              -->
-            <div id="board-badges-${story.id}">
+            <div id="board-badges-${story.id}" class="mt-2">
                 ${getBadgesSkeletonHTML()}
             </div>
         </div>

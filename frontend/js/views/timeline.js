@@ -43,23 +43,35 @@ function getTimelineEvents(stories) {
     const events = [];
 
     stories.forEach(story => {
-        // Add "Completed" event for done stories
+        // 1. Add "Completed" event for done stories
         if (['done', 'complete', 'closed'].includes(story.status?.toLowerCase())) {
             events.push({
-                date: story.last_updated || 'Recently',
-                title: `Completed ${story.id}`,
+                date: story.completed || story.last_updated || 'Recently',
+                title: `History: Story ${story.id} Completed`,
                 description: story.title,
                 type: 'completion',
                 storyId: story.id
             });
         }
-        // Add "In Progress" event for active stories
-        else if (['in-progress', 'active'].includes(story.status?.toLowerCase())) {
+
+        // 2. Add "Started/Active" event for in-progress stories
+        if (['in-progress', 'active'].includes(story.status?.toLowerCase())) {
             events.push({
-                date: story.last_updated || 'Recently',
-                title: `Started working on ${story.id}`,
+                date: story.last_updated || 'Active Now',
+                title: `Working on: Story ${story.id}`,
                 description: story.title,
                 type: 'progress',
+                storyId: story.id
+            });
+        }
+
+        // 3. Add "Created" event if we have a created date
+        if (story.created) {
+            events.push({
+                date: story.created,
+                title: `Planned: Story ${story.id} Created`,
+                description: story.title,
+                type: 'creation',
                 storyId: story.id
             });
         }
@@ -71,33 +83,34 @@ function getTimelineEvents(stories) {
         title: 'Project Initialized',
         description: 'BMAD Project Scaffold creation',
         type: 'milestone',
-        storyId: '0.1'
+        storyId: '0.0'
     });
 
     // Sort events: Newest first (Reverse Chronological)
-    // 1. Sort by Date Descending
-    // 2. Sort by Story ID Descending (as proxy for time if dates match)
     events.sort((a, b) => {
         const dateA = normalizeDate(a.date);
         const dateB = normalizeDate(b.date);
 
+        // Sort by Date Descending
         if (dateA > dateB) return -1;
         if (dateA < dateB) return 1;
 
-        // If dates are equal (or both 'Recently'), fall back to Story ID
-        // Parse ID "1.2" -> 1.2 float for comparison
-        const idA = parseFloat(a.storyId) || 0;
-        const idB = parseFloat(b.storyId) || 0;
+        // If dates are equal, sort by Story ID Descending (propely handled as version parts)
+        const partsA = (a.storyId || "0.0").split('.').map(Number);
+        const partsB = (b.storyId || "0.0").split('.').map(Number);
 
-        return idB - idA; // Descending ID
+        // Compare major version
+        if (partsA[0] !== partsB[0]) return partsB[0] - partsA[0];
+        // Compare minor version
+        return (partsB[1] || 0) - (partsA[1] || 0);
     });
 
     return events;
 }
 
 function normalizeDate(dateStr) {
-    if (!dateStr || dateStr === 'Recently') {
-        // Return a future date to ensure "Recently" stays at top
+    if (!dateStr || dateStr === 'Recently' || dateStr === 'Active Now') {
+        // Return a future date to ensure "Recently" and "Active Now" stay at top
         return '9999-12-31';
     }
     return dateStr;
@@ -108,6 +121,7 @@ function renderTimelineEvent(event) {
     if (event.type === 'completion') iconColor = 'bg-green-500';
     if (event.type === 'progress') iconColor = 'bg-bmad-accent';
     if (event.type === 'milestone') iconColor = 'bg-purple-500';
+    if (event.type === 'creation') iconColor = 'bg-blue-500';
 
     return `
         <div class="ml-8 relative group">

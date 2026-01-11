@@ -14,6 +14,7 @@ class Task:
     title: str
     status: str  # "todo" | "done"
     subtasks: List[Dict[str, str]] = field(default_factory=list)  # [{"text": "...", "status": "done"}]
+    inferred: bool = False
     
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON responses"""
@@ -21,7 +22,8 @@ class Task:
             "task_id": self.task_id,
             "title": self.title,
             "status": self.status,
-            "subtasks": self.subtasks
+            "subtasks": self.subtasks,
+            "inferred": self.inferred
         }
     
     @classmethod
@@ -31,6 +33,7 @@ class Task:
             task_id=data.get("task_id", ""),
             title=data.get("title", ""),
             status=data.get("status", "todo"),
-            subtasks=data.get("subtasks", [])
+            subtasks=data.get("subtasks", []),
+            inferred=data.get("inferred", False)
         )
 

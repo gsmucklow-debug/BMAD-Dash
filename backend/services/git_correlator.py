@@ -164,6 +164,46 @@ class GitCorrelator:
         
         return False
     
+    def extract_task_references(self, commit_message: str) -> List[int]:
+        """
+        Extract task numbers from commit message
+        
+        Patterns supported:
+        - "Task 1"
+        - "Task #1"
+        - "Task: 1"
+        - "T1"
+        
+        Args:
+            commit_message: Commit message
+            
+        Returns:
+            List of task numbers found (1-based)
+        """
+        if not commit_message:
+            return []
+            
+        task_refs = []
+        
+        # Regex for "Task 1", "Task #1", "Task: 1"
+        # Case insensitive
+        task_patterns = [
+            r'task[:\s#]*(\d+)',  # Task 1, Task: 1, Task #1
+            r'\bT[-:\s#]*(\d+)\b' # T1, T-1 (word boundary to avoid matching T in text)
+        ]
+        
+        for pattern in task_patterns:
+            matches = re.finditer(pattern, commit_message, re.IGNORECASE)
+            for match in matches:
+                try:
+                    task_num = int(match.group(1))
+                    if task_num not in task_refs:
+                        task_refs.append(task_num)
+                except ValueError:
+                    continue
+                    
+        return task_refs
+    
     def calculate_status(self, commits: List[GitCommit]) -> Tuple[str, Optional[datetime]]:
         """
         Calculate status based on commit recency

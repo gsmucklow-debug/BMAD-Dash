@@ -2,7 +2,7 @@
 id: '5.4'
 title: 'Evidence-Based Task Progress Inference'
 epic: 'Epic 5: AI Coach Integration'
-status: 'ready-for-dev'
+status: 'done'
 created: '2026-01-11'
 updated: '2026-01-11'
 contextEnhanced: '2026-01-11'

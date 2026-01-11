@@ -18,20 +18,16 @@ dashboard_bp = Blueprint('dashboard', __name__)
 _cache = Cache()
 
 
+from ..services.project_state_cache import ProjectStateCache
+from ..models.project import Project
+import time
+
 @dashboard_bp.route('/api/dashboard', methods=['GET'])
 @handle_api_errors
 def get_dashboard():
     """
     Returns dashboard data including project overview, breadcrumb, quick_glance, and kanban
-    
-    Query Parameters:
-        project_root (required): Absolute path to project root directory
-        
-    Returns:
-        200: Dashboard data with project, breadcrumb, quick_glance, kanban
-        400: Missing or invalid project_root parameter
-        404: Project path not found
-        500: Parsing or internal error
+    Using ProjectStateCache for performance (Story 5.4)
     """
     # Extract and validate project_root parameter
     project_root = request.args.get('project_root')
@@ -42,36 +38,94 @@ def get_dashboard():
     if not os.path.exists(project_root):
         raise FileNotFoundError(f"Project not found: {project_root}")
     
-    # Determine sprint-status.yaml path for cache invalidation
-    sprint_status_path = os.path.join(
-        project_root,
-        "_bmad-output/implementation-artifacts/sprint-status.yaml"
+    # Initialize cache service
+    cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
+    state_cache = ProjectStateCache(cache_file)
+    
+    # Load state
+    state = state_cache.load()
+    
+    # Bootstrap if cache is empty or has no epics
+    if not state.epics:
+        logger.info("Cache empty or no epics - running bootstrap...")
+        state_cache.bootstrap(project_root)
+        state_cache.save()
+        state = state_cache.cache_data
+    else:
+        # Sync with file system (only re-parses changed stories)
+        state_cache.sync(project_root)
+        state = state_cache.cache_data
+    
+    # Reconstruct Project object linking Epics and Stories
+    # ProjectState stores them disconnected after deserialization
+    epics_map = state.epics
+    
+    # Clear stories in epics object to rebuild from fresh stories list
+    for epic in epics_map.values():
+        epic.stories = []
+        
+    # Re-populate epics with stories
+    for story in state.stories.values():
+        # Get epic ID from story_id (e.g., "5.4" -> "5")
+        try:
+            epic_num = story.story_id.split('.')[0]
+            epic_key = f"epic-{epic_num}"
+        except (AttributeError, IndexError):
+            # Fallback to the epic field if story_id format is unexpected
+            epic_key = f"epic-{story.epic}"
+            
+        # Handle case where epic key might differ or missing
+        if epic_key in epics_map:
+             epics_map[epic_key].stories.append(story)
+        else:
+             # Fallback: log warning or try alternative mapping
+             logger.warning(f"Could not map story {story.story_id} to epic {epic_key}")
+             pass
+
+    # Sort stories in each epic by ID
+    for epic in epics_map.values():
+         epic.stories.sort(key=lambda s: sort_story_key(s.story_id))
+    
+    # Sort epics by ID
+    sorted_epics = sorted(epics_map.values(), key=lambda e: sort_epic_key(e.epic_id))
+    
+    project = Project(
+        name=state.project.get("name", "BMAD Dash"),
+        phase=state.project.get("phase", "Implementation"),
+        root_path=project_root,
+        epics=sorted_epics,
+        sprint_status_mtime=0.0 # Not used for invalidation anymore
     )
-    
-    # Try to get cached response
-    cache_key = f"dashboard_{project_root}"
-    cached_response = _cache.get(cache_key, sprint_status_path)
-    
-    if cached_response:
-        logger.info(f"Cache HIT for {cache_key}")
-        return jsonify(cached_response), 200
-    
-    logger.info(f"Cache MISS for {cache_key} - parsing project")
-    
-    # Parse project using BMADParser
-    parser = BMADParser(project_root)
-    project = parser.parse_project()
-    
-    if not project:
-        raise Exception(f"Failed to parse project at {project_root}")
     
     # Build dashboard response
     response = build_dashboard_response(project)
     
-    # Cache the response
-    _cache.set(cache_key, response, sprint_status_path)
+    # Add cache_age_ms
+    try:
+        if os.path.exists(state_cache.cache_file):
+            mtime = os.path.getmtime(state_cache.cache_file)
+            age = (time.time() - mtime) * 1000
+            response["cache_age_ms"] = age
+        else:
+            response["cache_age_ms"] = 0
+    except OSError:
+        response["cache_age_ms"] = 0
     
     return jsonify(response), 200
+
+def sort_story_key(story_id):
+    try:
+        parts = story_id.split('.')
+        return (int(parts[0]), int(parts[1]))
+    except:
+        return (0, 0)
+
+def sort_epic_key(epic_id):
+    try:
+        return int(epic_id.replace("epic-", ""))
+    except:
+        return 0
+
 
 
 def _get_current_story_focus(all_stories):
@@ -170,6 +224,8 @@ def build_breadcrumb(project) -> Dict[str, Any]:
         "story": None,
         "task": None
     }
+    
+    current_epic = None
     
     # Strategy: Align Breadcrumb with Quick Glance (Current > Next > Fallback)
     
@@ -305,7 +361,9 @@ def build_quick_glance(project) -> Dict[str, Any]:
     if current_story:
         # Calculate progress
         total_tasks = len(current_story.tasks)
-        done_tasks = len([t for t in current_story.tasks if t.status == "done"])
+        official_done = len([t for t in current_story.tasks if t.status == "done" and not getattr(t, 'inferred', False)])
+        inferred_done = len([t for t in current_story.tasks if getattr(t, 'inferred', False)])
+        done_tasks = official_done + inferred_done
         
         # Find current task (first in-progress, or first todo)
         current_task_title = "No active task"
@@ -320,11 +378,15 @@ def build_quick_glance(project) -> Dict[str, Any]:
                     current_task_title = task.title
                     break
 
+        progress_str = f"{done_tasks}/{total_tasks} tasks"
+        if inferred_done > 0:
+            progress_str = f"{done_tasks}/{total_tasks} ({inferred_done} inferred)"
+
         quick_glance["current"] = {
             "story_id": current_story.story_id,
             "title": current_story.title,
             "status": current_story.status,
-            "progress": f"{done_tasks}/{total_tasks} tasks",
+            "progress": progress_str,
             "current_task": current_task_title
         }
         

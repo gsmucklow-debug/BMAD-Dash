@@ -151,7 +151,8 @@ class TestStoryModel:
         
         assert data['story_id'] == "2.3"
         assert data['title'] == "Another Story"
-        assert len(data['tasks']) == 1
+        assert len(data['tasks']['items']) == 1  # Updated
+        assert data['tasks']['total'] == 1       # Updated
         assert data['created'] == "2026-01-09"
         assert data['completed'] == "2026-01-10"
         assert data['mtime'] == 999.888
@@ -325,8 +326,8 @@ class TestNestedSerialization:
         assert data['name'] == "Project"
         assert len(data['epics']) == 1
         assert len(data['epics'][0]['stories']) == 1
-        assert len(data['epics'][0]['stories'][0]['tasks']) == 1
-        assert data['epics'][0]['stories'][0]['tasks'][0]['title'] == "Task"
+        assert len(data['epics'][0]['stories'][0]['tasks']['items']) == 1  # Updated
+        assert data['epics'][0]['stories'][0]['tasks']['items'][0]['title'] == "Task"  # Updated
     
     def test_full_project_deserialization(self):
         """Test deserializing complete nested project"""
