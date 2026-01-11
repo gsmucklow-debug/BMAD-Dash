@@ -2,15 +2,17 @@
 id: '5.4'
 title: 'Evidence-Based Task Progress Inference'
 epic: 'Epic 5: AI Coach Integration'
-status: 'backlog'
+status: 'ready-for-dev'
 created: '2026-01-11'
 updated: '2026-01-11'
+contextEnhanced: '2026-01-11'
 assignee: 'dev-agent'
 priority: 'high'
 estimatedHours: 16
 actualHours: 0
 dependencies: ['5.2']
 tags: ['ai-coach', 'automation', 'progress-tracking', 'git', 'caching']
+contextNotes: 'Enhanced with comprehensive developer intelligence: previous story learnings (5.2, 5.3), architecture compliance, latest JSON caching patterns, XSS prevention, performance targets, and complete file structure requirements'
 ---
 
 # Story 5.4: Evidence-Based Task Progress Inference
@@ -257,6 +259,425 @@ _bmad-output/implementation-artifacts/project-state.json
 
 ## Git Commits
 <!-- Commits will be tracked here -->
+
+## Developer Context & Implementation Intelligence
+
+### Previous Story Learnings (Critical - Read Before Coding!)
+
+**From Story 5.3 (completed 2026-01-11):**
+- **XSS Vulnerability Pattern**: ALWAYS escape user data with `_escapeHtml()` helper before using `innerHTML`
+  - Found and fixed in gap-warning.js:89 during code review
+  - Escaped fields: `story_id`, `story_title`, and any user-generated content
+- **ValidationService Pattern**: Created aggregator service pattern combining multiple evidence sources
+  - Located: `backend/services/validation_service.py`
+  - Performance: <500ms for comprehensive validation (verified in tests)
+- **API Endpoint Pattern**: Created `/api/validate-story/<story_id>` and `/api/workflow-gaps`
+  - Both use standardized JSON error format
+  - Both complete in <100ms (NFR5 requirement)
+- **Frontend Component Pattern**: Created `frontend/js/components/gap-warning.js`
+  - CSS styling in `frontend/css/input.css` (not inline)
+  - Slide-down animation with severity-based coloring
+  - One-click copy-to-clipboard for commands
+- **Testing Requirements**: All 264 tests must pass - zero regressions tolerated
+  - 10 comprehensive ValidationService tests created
+  - Fixed pre-existing workflow history test for timestamp ordering
+- **No JavaScript Errors**: Console must be clean - no warnings, no errors
+
+**From Story 5.2 (completed 2026-01-11):**
+- **AI Coach System Prompt Enhancement**: Include project context in `_build_system_prompt()`
+  - Current phase, epic ID/title, story ID/title/status
+  - BMAD workflow suggestions based on story state
+- **Modular Frontend Components**: Created utilities pattern
+  - `prompt-generator.js` for state-based logic
+  - `suggested-prompts.js` for UI rendering
+  - Clean separation: logic vs. presentation
+- **Glassmorphism UI Pattern**: Established visual style
+  - `backdrop-filter: blur(10px)` for depth
+  - Category color-coding for visual scanning
+- **Jest Frontend Tests**: Comprehensive test coverage
+  - Test HTML escaping (XSS prevention)
+  - Test keyboard accessibility
+  - Test 44x44px touch targets (NFR10)
+- **BMADVersionDetector Service**: Created for version detection
+  - YAML parsing with caching
+  - Backward compatibility handling
+- **Security**: Sanitize ALL user input, never send sensitive data to Gemini
+
+**Common Patterns Across Epic 5:**
+- Backend services in `backend/services/` directory
+- Frontend components in `frontend/js/components/`
+- CSS in `frontend/css/input.css` using Tailwind utilities
+- API blueprints in `backend/api/` directory
+- Pytest for backend (unit + integration), Jest for frontend
+- All async operations must have error handlers
+- Performance: <200ms AI first token, <500ms complex operations
+
+### Architecture Compliance Requirements
+
+**Critical Constraints from architecture.md:**
+
+1. **Caching Strategy** (architecture.md lines 493-528):
+   - In-memory cache with file mtime invalidation
+   - User manual refresh button (explicit cache clear for trust)
+   - Cache lives only while Flask server runs (no persistence complexity)
+   - Track modification times in `cache['file_mtimes']` dictionary
+   - Invalidate if any `_bmad-output/**/*.md` file modified
+
+2. **Data Models** (architecture.md lines 429-492):
+   - Use Python dataclasses (built-in, no dependencies)
+   - Optional type hints (no runtime enforcement for flexibility)
+   - No validation overhead (trust file-based parsing correctness)
+   - Follow established pattern: Project, Epic, Story, Task, Evidence classes
+
+3. **Performance Targets** (architecture.md lines 46-50, NFR1-NFR13):
+   - **<500ms** dashboard startup (CRITICAL for assistive tech)
+   - **<100ms** with warm cache (Story 5.4 specific target)
+   - **<300ms** refresh with 1 changed story (Story 5.4 specific)
+   - **<50ms** modal expansion (must feel instant)
+   - **Support 100+ stories** without degradation
+
+4. **Error Handling** (architecture.md cross-cutting concerns):
+   - **Graceful degradation**: Show "Unknown" rather than crash
+   - **Standardized error format**: `{error, message, details, status, timestamp}`
+   - **Log parsing errors** with file path + line number
+   - **Never crash dashboard** due to malformed files
+
+5. **Project Structure** (architecture.md lines 874-947):
+   - Backend: `backend/services/` for business logic services
+   - Backend: `backend/parsers/` for file parsing
+   - Backend: `backend/api/` for API route blueprints
+   - Frontend: `frontend/js/components/` for UI components
+   - Frontend: `frontend/js/utils/` for reusable helpers
+   - Tests: `tests/` top-level directory
+
+6. **No Database** (architecture.md line 990):
+   - All data from file parsing (read-only)
+   - No SQLAlchemy, no migrations
+   - JSON file acts as persistence layer for cache
+
+### Library & Framework Requirements (Latest 2026)
+
+**Python Standard Library - File Operations:**
+
+From latest Python 3.13 documentation:
+```python
+from pathlib import Path
+
+# Get file modification time
+path = Path('story-file.md')
+mtime = path.stat().st_mtime  # Returns float (seconds since epoch)
+
+# Check if file exists before stating
+if path.exists():
+    stat_info = path.stat()
+    size = stat_info.st_size
+    modified = stat_info.st_mtime
+```
+
+**Critical mtime Pattern:**
+- Use `pathlib.Path.stat().st_mtime` for modification time
+- **Warning**: mtime has 1-second resolution - can cause issues in fast-running scripts
+- Always check `path.exists()` before calling `stat()` to avoid FileNotFoundError
+- Cache mtimes in dictionary: `{'file_path': mtime_float}`
+
+**JSON Caching Best Practices (2025-2026):**
+
+Based on latest industry patterns:
+
+1. **Cache Invalidation Strategy:**
+```python
+import json
+import time
+from pathlib import Path
+
+def get_cached_data(cache_file, source_files, max_age_seconds=None):
+    cache_path = Path(cache_file)
+
+    # Check if cache exists
+    if not cache_path.exists():
+        return None  # Need to rebuild
+
+    cache_mtime = cache_path.stat().st_mtime
+
+    # Check if any source file is newer than cache
+    for source_file in source_files:
+        source_path = Path(source_file)
+        if source_path.exists():
+            if source_path.stat().st_mtime > cache_mtime:
+                return None  # Source modified, cache stale
+
+    # Optional: Check age-based invalidation
+    if max_age_seconds:
+        cache_age = time.time() - cache_mtime
+        if cache_age > max_age_seconds:
+            return None  # Cache too old
+
+    # Load from cache
+    with open(cache_path, 'r') as f:
+        return json.load(f)
+```
+
+2. **Fallback Mechanisms** (Critical for reliability):
+   - Cache failures shouldn't break application
+   - Always provide fallback to re-parsing
+   - Log cache errors but continue operation
+
+3. **JSON vs Pickle**:
+   - Prefer JSON over pickle for **security reasons**
+   - JSON is human-readable for debugging
+   - JSON is cross-language compatible
+   - Performance: JSON parsing 5-10x faster than YAML
+
+**Performance Monitoring:**
+```python
+import time
+
+def timed_operation(name):
+    start = time.perf_counter()
+    yield
+    elapsed = (time.perf_counter() - start) * 1000  # Convert to ms
+    print(f"{name}: {elapsed:.2f}ms")
+
+# Usage in code
+with timed_operation("Load project state"):
+    data = load_project_state()
+```
+
+### File Structure Requirements
+
+**New Files to Create:**
+
+1. `backend/services/project_state_cache.py` - Main cache service
+   - Class: `ProjectStateCache`
+   - Methods: `load()`, `save()`, `get_story(id)`, `update_story(id, data)`, `bootstrap()`
+
+2. `tests/test_project_state_cache.py` - Unit tests
+   - Test cache invalidation logic
+   - Test mtime checking
+   - Test performance (<100ms warm cache)
+   - Test JSON serialization/deserialization
+
+3. `_bmad-output/implementation-artifacts/project-state.json` - Cache file (auto-generated)
+   - Version field for future migrations
+   - Project metadata section
+   - Current state section
+   - Epics and stories with evidence
+
+**Files to Modify:**
+
+1. `backend/app.py` - Register ProjectStateCache service
+   - Import and instantiate cache on server startup
+   - Wire into existing endpoints
+
+2. `backend/api/dashboard.py` - Use cache instead of direct parsing
+   - Load from cache first
+   - Check mtimes for staleness
+   - Update cache on changes
+
+3. `backend/services/ai_coach.py` - Include project state in prompt
+   - Load project-state.json
+   - Include in system prompt context
+   - Add "Project Summary" section
+
+4. `frontend/js/components/story-card.js` - Display inferred progress
+   - Show "6/8 tasks (2 official, 4 inferred)" format
+   - Add visual indicator for inferred vs official
+   - Tooltip explaining discrepancy
+
+5. `frontend/js/components/quick-glance.js` - Update with inferred progress
+   - Use inferred task completion for progress bars
+   - Maintain existing visual style
+
+### Testing Requirements
+
+**pytest Backend Tests:**
+
+Required test coverage for `test_project_state_cache.py`:
+
+1. **Cache Creation Test**:
+   - Given: No project-state.json exists
+   - When: `bootstrap()` called
+   - Then: JSON file created with all stories parsed
+
+2. **Cache Invalidation Test** (CRITICAL):
+   - Given: Cache exists with known mtimes
+   - When: Story file modified (touch file to change mtime)
+   - Then: Only that story re-parsed, others from cache
+
+3. **Performance Test**:
+   - Given: Warm cache with 20+ stories
+   - When: `load()` called
+   - Then: Completes in <100ms (AC6 requirement)
+
+4. **Incremental Update Test**:
+   - Given: Cache exists, 1 story file changed
+   - When: Refresh triggered
+   - Then: Completes in <300ms (AC6 requirement)
+
+5. **Task Inference Test**:
+   - Given: Git commit "feat(5.3): Task 2 complete"
+   - When: Evidence collector runs
+   - Then: Task 2 marked done with `inferred: true`
+
+6. **AI Context Test**:
+   - Given: project-state.json loaded
+   - When: AICoach builds system prompt
+   - Then: Full project state included in context
+
+**Jest Frontend Tests:**
+
+Required for story-card.js and quick-glance.js updates:
+
+1. **Inferred Progress Display Test**:
+   - Render story card with official (2/8) and inferred (6/8)
+   - Verify format: "6/8 tasks (2 official, 4 inferred)"
+   - Verify visual indicator present
+
+2. **Tooltip Test**:
+   - Hover over inferred progress indicator
+   - Tooltip explains: "4 tasks detected complete via evidence"
+
+**All Tests Must Pass:**
+- Current test count: 264 tests
+- After Story 5.4: 264 + 6 backend + 2 frontend = 272 tests
+- **Zero regressions** - all existing tests must still pass
+
+### Security & Code Quality Notes
+
+**Security Requirements:**
+
+1. **XSS Prevention** (Learned from Story 5.3 review):
+   - Escape ALL user data before innerHTML: `_escapeHtml(story_id)`, `_escapeHtml(story_title)`
+   - Never trust data from files - always sanitize
+
+2. **JSON Injection Prevention**:
+   - Validate JSON structure on load
+   - Handle malformed JSON gracefully (log error, return empty state)
+   - Never execute JSON content as code
+
+3. **File Path Traversal**:
+   - Validate project root path
+   - Ensure paths stay within project boundaries
+   - Use `pathlib.Path.resolve()` to normalize paths
+
+**Code Quality Standards:**
+
+1. **Type Hints** (Optional but recommended):
+   ```python
+   from typing import Dict, List, Optional
+   from dataclasses import dataclass
+
+   @dataclass
+   class ProjectState:
+       project: Dict
+       current: Dict
+       epics: Dict[str, Dict]
+       stories: Dict[str, Dict]
+   ```
+
+2. **Error Handling Pattern**:
+   ```python
+   try:
+       data = load_project_state()
+   except FileNotFoundError:
+       logger.info("No cache found, bootstrapping...")
+       data = bootstrap_project_state()
+   except json.JSONDecodeError as e:
+       logger.error(f"Malformed project-state.json: {e}")
+       data = bootstrap_project_state()  # Fallback
+   ```
+
+3. **Logging Standards**:
+   - Use Python logging module (not print statements)
+   - INFO level: Cache hits/misses, bootstrap events
+   - ERROR level: File errors, JSON parse errors
+   - DEBUG level: Detailed mtime comparisons
+
+### Latest Technical Information (2026 Best Practices)
+
+**JSON Caching Pattern - Industry Standard:**
+
+Based on research from latest Python documentation and caching libraries:
+
+```python
+class ProjectStateCache:
+    def __init__(self, cache_file: str):
+        self.cache_file = Path(cache_file)
+        self.cache_data = None
+        self.file_mtimes = {}
+
+    def is_stale(self, project_root: str) -> bool:
+        """Check if cache is stale based on file mtimes"""
+        if not self.cache_file.exists():
+            return True  # No cache = stale
+
+        cache_mtime = self.cache_file.stat().st_mtime
+
+        # Check all story files
+        story_dir = Path(project_root) / "_bmad-output/implementation-artifacts"
+        for story_file in story_dir.glob("*.md"):
+            if story_file.stat().st_mtime > cache_mtime:
+                return True  # Source newer than cache
+
+        return False
+
+    def load(self) -> Dict:
+        """Load from cache or bootstrap if stale"""
+        if self.is_stale():
+            logger.info("Cache stale, bootstrapping...")
+            self.cache_data = self.bootstrap()
+            self.save()
+        else:
+            logger.info("Loading from cache...")
+            with open(self.cache_file, 'r') as f:
+                self.cache_data = json.load(f)
+
+        return self.cache_data
+
+    def save(self):
+        """Save cache to disk with pretty print"""
+        with open(self.cache_file, 'w') as f:
+            json.dump(self.cache_data, f, indent=2)
+```
+
+**Performance Optimization Techniques:**
+
+1. **Lazy Loading**: Only parse changed stories
+2. **Selective Updates**: Don't rebuild entire cache on single story change
+3. **Monitoring**: Log cache performance metrics
+
+**mtime Resolution Warning:**
+- Modification time has **1-second resolution**
+- Rapid file changes within same second may not trigger invalidation
+- **Mitigation**: Use file size as secondary check if needed
+- **In practice**: Not an issue for BMAD workflows (human-paced)
+
+**AI Context Size Management:**
+- Full project-state.json: ~5-10KB typical (well within Gemini limits)
+- Can truncate completed story details if needed for large projects
+- Keep index.md-style structure: full detail for current, summary for completed
+
+**Migration Strategy for Future:**
+- Include `version` field in JSON: `"version": "1.0"`
+- Auto-upgrade on load if version mismatch detected
+- Backward-compatible readers for older versions
+
+### References
+
+**Architecture Document:**
+- [Source: architecture.md#Data Architecture] - Dataclass patterns, no validation
+- [Source: architecture.md#Caching Strategy] - In-memory cache with mtime invalidation
+- [Source: architecture.md#Performance Requirements] - <500ms startup, <100ms operations
+- [Source: architecture.md#Error Handling] - Graceful degradation, standardized errors
+
+**Previous Stories:**
+- [Story 5.3: AI Agent Output Validation](_bmad-output/implementation-artifacts/5-3-ai-agent-output-validation-workflow-gap-warnings.md) - ValidationService pattern, XSS fixes
+- [Story 5.2: Project-Aware Q&A](_bmad-output/implementation-artifacts/5-2-project-aware-qa-suggested-prompts.md) - AI context enhancement, modular components
+
+**Latest Technical Research:**
+- [Python 3.13 pathlib Documentation](https://docs.python.org/3.13/library/pathlib) - Path.stat() for mtime checking
+- [Python Caching Best Practices 2025](https://blog.apify.com/python-cache-complete-guide/) - Invalidation strategies, fallback mechanisms
+- [File-based JSON Caching](https://medium.com/@tk512/simple-file-based-json-cache-in-python-61b2c11faa84) - Practical patterns
 
 ## Review Notes
 <!-- Code review feedback will be added here -->

@@ -9,6 +9,7 @@ import { render as renderQuickGlance } from './components/quick-glance.js';
 import { render as renderViewSwitcher, updateActive } from './components/view-switcher.js';
 import { init as initEvidenceModal } from './components/evidence-modal.js';
 import { AIChat } from './components/ai-chat.js';
+import { GapWarning } from './components/gap-warning.js';
 import { render as renderDashboard } from './views/dashboard.js';
 import { render as renderTimeline } from './views/timeline.js';
 import { render as renderList } from './views/list.js';
@@ -104,6 +105,9 @@ async function init() {
 
         // Router will handle view rendering based on hash
         router.handleRoute();
+
+        // Initialize gap warnings (Story 5.3 AC3)
+        initGapWarnings();
 
         console.timeEnd('Dashboard Load Time');
 
@@ -397,6 +401,24 @@ function setupEventHandlers() {
     refreshButton.addEventListener('click', () => {
         handleRefresh();
     });
+}
+
+/**
+ * Initialize gap warnings (Story 5.3 AC3)
+ * Displays proactive warnings for workflow gaps
+ */
+async function initGapWarnings() {
+    try {
+        const gapWarning = new GapWarning();
+        const mainContent = document.querySelector('#breadcrumb');
+
+        if (mainContent) {
+            await gapWarning.initialize(mainContent);
+        }
+    } catch (error) {
+        console.error('Failed to initialize gap warnings:', error);
+        // Don't block the app if gap warnings fail
+    }
 }
 
 // Initialize app on DOM ready

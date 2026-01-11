@@ -106,14 +106,15 @@ development_status:
         assert story is not None, "Story should be parsed"
         assert hasattr(story, 'workflow_history'), "Story should have workflow_history attribute"
         
-        # Verify workflow history content (order is as defined in YAML, not sorted)
+        # Verify workflow history content (sorted by timestamp, most recent first)
         workflows = story.workflow_history
         assert len(workflows) == 2, f"Expected 2 workflows, got {len(workflows)}"
-        
-        # Verify workflow order and content (as defined in YAML file)
-        assert workflows[0]['name'] == 'dev-story', "First workflow should be dev-story (as defined)"
+
+        # Verify workflow order and content (sorted by timestamp, most recent first)
+        # code-review has timestamp 11:00, dev-story has 10:00, so code-review should be first
+        assert workflows[0]['name'] == 'code-review', "First workflow should be code-review (most recent)"
         assert workflows[0]['result'] == 'success'
-        assert workflows[1]['name'] == 'code-review', "Second workflow should be code-review (as defined)"
+        assert workflows[1]['name'] == 'dev-story', "Second workflow should be dev-story (older)"
         assert workflows[1]['result'] == 'success'
         
         # Verify timestamps

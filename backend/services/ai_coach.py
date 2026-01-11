@@ -7,6 +7,7 @@ import google.generativeai as genai
 from typing import Generator, Dict, Any, Optional
 import json
 from backend.services.bmad_version_detector import BMADVersionDetector
+from backend.services.validation_service import ValidationService
 
 
 class AICoach:
@@ -18,7 +19,7 @@ class AICoach:
     def __init__(self, api_key: str, project_root: str = None):
         """
         Initialize the AI Coach with Gemini API key
-        
+
         Args:
             api_key: Gemini API key from environment
             project_root: Optional project root for BMAD version detection
@@ -27,14 +28,107 @@ class AICoach:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         self.version_detector = BMADVersionDetector(project_root) if project_root else None
+        self.validation_service = ValidationService(project_root) if project_root else None
+        self.project_root = project_root
     
+    def _format_validation_summary(self, validation_result) -> str:
+        """
+        Format validation result into human-readable summary (Story 5.3 AC2, AC4)
+
+        Args:
+            validation_result: ValidationResult object
+
+        Returns:
+            Formatted validation summary string
+        """
+        if validation_result.is_complete:
+            # Story appears complete
+            evidence_list = []
+            if validation_result.has_git_commits:
+                last_commit = validation_result.git_last_commit_time
+                time_str = last_commit.strftime("%Y-%m-%d %H:%M") if last_commit else "unknown"
+                evidence_list.append(f"✅ **Git Evidence**: {validation_result.git_commit_count} commits (last: {time_str})")
+
+            if validation_result.has_tests:
+                last_run = validation_result.test_last_run_time
+                if last_run:
+                    from datetime import datetime
+                    age = datetime.now() - last_run.replace(tzinfo=None) if last_run.tzinfo else datetime.now() - last_run
+                    hours_ago = int(age.total_seconds() / 3600)
+                    time_str = f"{hours_ago}h ago" if hours_ago > 0 else "recently"
+                else:
+                    time_str = "unknown"
+                evidence_list.append(f"✅ **Test Evidence**: {validation_result.test_pass_count}/{validation_result.test_pass_count + validation_result.test_fail_count} tests passing (last run: {time_str})")
+
+            if validation_result.all_tasks_complete:
+                evidence_list.append(f"✅ **Tasks**: All tasks complete")
+
+            if validation_result.has_dev_story_workflow:
+                evidence_list.append(f"✅ **Workflow**: dev-story executed")
+
+            if validation_result.has_code_review_workflow:
+                evidence_list.append(f"✅ **Workflow**: code-review executed")
+
+            summary = f"**Story {validation_result.story_id} appears complete:**\n" + "\n".join(evidence_list)
+        else:
+            # Story has issues
+            summary = f"**Story {validation_result.story_id} marked done but issues found:**\n"
+            for issue in validation_result.issues:
+                summary += f"⚠️ {issue}\n"
+
+            # Add suggested commands (Story 5.3 AC4)
+            if not validation_result.has_dev_story_workflow:
+                summary += f"\n**Suggestion**: Run `/bmad-bmm-workflows-dev-story`"
+            elif not validation_result.has_code_review_workflow:
+                summary += f"\n**Suggestion**: Run `/bmad-bmm-workflows-code-review`"
+
+        return summary
+
+    def _detect_validation_intent(self, message: str, context: Dict[str, Any]) -> Optional[str]:
+        """
+        Detect if user is asking for story validation (AC2, Story 5.3)
+
+        Args:
+            message: User's question
+            context: Context with story_id
+
+        Returns:
+            Story ID to validate, or None if not a validation query
+        """
+        message_lower = message.lower()
+
+        # Validation intent keywords
+        validation_keywords = [
+            'complete', 'completed', 'correctly', 'done',
+            'validate', 'validation', 'check', 'verify',
+            'did the ai', 'did agent', 'was story',
+            'finished', 'ready'
+        ]
+
+        # Check if message contains validation intent
+        has_validation_intent = any(keyword in message_lower for keyword in validation_keywords)
+
+        if has_validation_intent:
+            # Extract story ID from context or message
+            story_id = context.get('story_id') or context.get('story')
+
+            # Try to extract story ID from message (e.g., "Story 5.3", "5.3")
+            import re
+            story_match = re.search(r'\b(\d+)\.(\d+)\b', message)
+            if story_match:
+                story_id = f"{story_match.group(1)}.{story_match.group(2)}"
+
+            return story_id
+
+        return None
+
     def _build_system_prompt(self, context: Dict[str, Any]) -> str:
         """
         Constructs the system prompt with BMAD context
-        
+
         Args:
             context: Dictionary containing project context (phase, epic, story, task, status, titles, tasks)
-            
+
         Returns:
             System prompt string
         """
@@ -45,6 +139,9 @@ class AICoach:
         story_title = context.get('story_title', '')
         story_status = context.get('story_status', 'Unknown')
         task = context.get('task', 'Unknown')
+
+        # Check if validation results should be included (Story 5.3 AC2)
+        validation_summary = context.get('validation_summary', '')
         
         # Task-level details (Story 5.2 AC4)
         task_progress = context.get('taskProgress', '0/0 tasks')
@@ -75,6 +172,11 @@ class AICoach:
         if self.version_detector:
             bmad_version = self.version_detector.detect_version()
         
+        # Format validation summary if present (Story 5.3 AC2)
+        validation_context = ""
+        if validation_summary:
+            validation_context = f"\n\n**Story Validation Results:**\n{validation_summary}"
+
         system_prompt = f"""You are the BMAD (Brain-Friendly Method for AI Development) Coach AI assistant.
 
 BMAD Method Version: {bmad_version}
@@ -87,7 +189,7 @@ Current Project Context:
 - Story: {story_id}{' - ' + story_title if story_title else ''}
 - Story Status: {story_status}
 - Task Progress: {task_progress}
-- Current Task: {current_task} [{current_task_status}]{task_list_str}{ac_str}
+- Current Task: {current_task} [{current_task_status}]{task_list_str}{ac_str}{validation_context}
 
 BMAD Method Principles:
 1. Brain-Friendly Design: Minimize cognitive load, use progressive disclosure
@@ -146,22 +248,35 @@ Remember: You have access to the current project state, so reference it in your 
     def generate_stream(self, message: str, context: Dict[str, Any]) -> Generator[str, None, None]:
         """
         Generates streaming AI response using Gemini 3 Flash
-        
+
         Args:
             message: User's question or prompt
             context: Dictionary containing project context (phase, epic, story, task)
-            
+
         Yields:
             JSON-formatted SSE data chunks with token content
-            
+
         Raises:
             ValueError: If API key is not configured
             genai.APIError: If Gemini API call fails
         """
         if not self.api_key or self.api_key == 'your-api-key-here':
             raise ValueError("GEMINI_API_KEY is not configured. Please set it in .env file")
-        
+
         try:
+            # Detect validation intent (Story 5.3 AC1, AC2)
+            validation_story_id = self._detect_validation_intent(message, context)
+
+            if validation_story_id and self.validation_service:
+                # Run validation
+                validation_result = self.validation_service.validate_story(validation_story_id)
+
+                # Format validation summary (Story 5.3 AC2)
+                validation_summary = self._format_validation_summary(validation_result)
+
+                # Add validation summary to context
+                context['validation_summary'] = validation_summary
+
             system_prompt = self._build_system_prompt(context)
             
             # Combine system prompt with user message

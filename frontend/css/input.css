@@ -413,6 +413,90 @@
             @apply grid-cols-1;
         }
     }
+
+    /* Gap Warning Styles (Story 5.3) */
+    .gap-warning-container {
+        @apply bg-yellow-900/30 border-2 border-yellow-600 rounded-lg p-4 mb-6 shadow-lg;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .gap-warning-header {
+        @apply flex items-center gap-3 mb-3;
+    }
+
+    .gap-warning-icon {
+        @apply text-2xl;
+    }
+
+    .gap-warning-title {
+        @apply text-lg font-semibold text-yellow-300 m-0;
+    }
+
+    .gap-warning-list {
+        @apply space-y-3 mb-4;
+    }
+
+    .gap-warning-item {
+        @apply bg-bmad-surface border border-bmad-gray rounded-md p-3;
+    }
+
+    .gap-warning-story-header {
+        @apply text-bmad-text mb-2 pb-2 border-b border-bmad-gray/50;
+    }
+
+    .gap-warning-details {
+        @apply list-none pl-4 space-y-2 m-0;
+    }
+
+    .gap-warning-detail {
+        @apply text-sm;
+    }
+
+    .gap-severity-high {
+        @apply text-red-400;
+    }
+
+    .gap-severity-medium {
+        @apply text-yellow-400;
+    }
+
+    .gap-severity-low {
+        @apply text-blue-400;
+    }
+
+    .gap-message {
+        @apply block mb-1;
+    }
+
+    .gap-suggestion {
+        @apply mt-2 ml-4 flex items-center gap-2 text-bmad-muted text-xs;
+    }
+
+    .gap-suggestion-label {
+        @apply font-medium;
+    }
+
+    .gap-command-button {
+        @apply bg-bmad-accent text-white px-3 py-1 rounded font-mono text-xs;
+        @apply hover:bg-bmad-accent-hover transition-colors cursor-pointer;
+    }
+
+    .gap-warning-dismiss {
+        @apply bg-bmad-gray hover:bg-bmad-surface-hover text-bmad-text;
+        @apply px-3 py-1 rounded text-sm transition-colors cursor-pointer;
+        @apply border border-bmad-gray hover:border-bmad-muted;
+    }
 }
 
 /* Critical alignment overrides - outside @layer for higher specificity */

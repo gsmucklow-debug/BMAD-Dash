@@ -51,7 +51,11 @@ def create_app():
     # Register AI Chat blueprint (Story 5.1)
     from backend.api.ai_chat import ai_chat_bp
     app.register_blueprint(ai_chat_bp)
-    
+
+    # Register Validation blueprint (Story 5.3)
+    from backend.api.validation import validation_bp
+    app.register_blueprint(validation_bp)
+
     @app.route('/')
     def index():
         return app.send_static_file('index.html')
