@@ -2,7 +2,7 @@
 id: '5.2'
 title: 'Project-Aware Q&A & Suggested Prompts'
 epic: 'Epic 5: AI Coach Integration'
-status: 'reviewed'
+status: 'done'
 created: '2026-01-11'
 updated: '2026-01-11'
 completed: '2026-01-11'
