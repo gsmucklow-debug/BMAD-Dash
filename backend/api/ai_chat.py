@@ -6,6 +6,7 @@ POST /api/ai-chat - Sends message to AI coach and returns streaming response
 from flask import Blueprint, request, Response, jsonify
 from backend.services.ai_coach import AICoach
 from backend.config import Config
+import json
 
 ai_chat_bp = Blueprint('ai_chat', __name__)
 
@@ -75,10 +76,10 @@ def ai_chat():
                     yield chunk
             except ValueError as e:
                 error_data = {"error": str(e)}
-                yield f"data: {error_data}\n\n"
+                yield f"data: {json.dumps(error_data)}\n\n"
             except Exception as e:
                 error_data = {"error": f"Internal server error: {str(e)}"}
-                yield f"data: {error_data}\n\n"
+                yield f"data: {json.dumps(error_data)}\n\n"
         
         return Response(
             generate(),
