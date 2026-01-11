@@ -61,7 +61,12 @@ def ai_chat():
                 'message': 'GEMINI_API_KEY is not configured'
             }), 500
         
-        ai_coach = AICoach(Config.GEMINI_API_KEY)
+        # Get project root from context or use default
+        project_root = project_context.get('project_root')
+        if not project_root and hasattr(Config, 'PROJECT_ROOT'):
+            project_root = Config.PROJECT_ROOT
+        
+        ai_coach = AICoach(Config.GEMINI_API_KEY, project_root=project_root)
         
         # Generate streaming response
         def generate():

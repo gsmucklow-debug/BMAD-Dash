@@ -336,6 +336,83 @@
     .ai-chat-loading {
         @apply animate-pulse;
     }
+
+    /* Suggested Prompts Styles (Story 5.2) */
+    .suggested-prompts-container {
+        @apply px-4 py-4 bg-transparent border-b border-white/5;
+    }
+
+    .suggested-prompts-header {
+        @apply flex items-center justify-between mb-3;
+    }
+
+    .suggested-prompts-title {
+        @apply text-xs font-semibold text-bmad-muted uppercase tracking-wider;
+    }
+
+    .suggested-prompts-grid {
+        @apply grid grid-cols-2 gap-2;
+    }
+
+    .suggested-prompt-card {
+        @apply min-w-[44px] min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-xs font-medium transition-all cursor-pointer;
+        /* Glassmorphism styling */
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .suggested-prompt-card:hover,
+    .suggested-prompt-card.hovered {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .suggested-prompt-card:active,
+    .suggested-prompt-card.clicked {
+        transform: scale(0.97);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .suggested-prompt-card:focus {
+        outline: 2px solid rgba(var(--color-bmad-accent), 0.5);
+        outline-offset: 2px;
+    }
+
+    /* Category-based styling */
+    .prompt-category-workflow {
+        border-left: 2px solid #4a9eff;
+    }
+
+    .prompt-category-info {
+        border-left: 2px solid #9d4edd;
+    }
+
+    .prompt-category-validation {
+        border-left: 2px solid #f72585;
+    }
+
+    .prompt-category-help {
+        border-left: 2px solid #06ffa5;
+    }
+
+    .prompt-icon {
+        @apply text-base flex-shrink-0;
+    }
+
+    .prompt-text {
+        @apply text-bmad-text leading-tight flex-1;
+    }
+
+    /* Responsive grid - single column on small screens */
+    @media (max-width: 640px) {
+        .suggested-prompts-grid {
+            @apply grid-cols-1;
+        }
+    }
 }
 
 /* Critical alignment overrides - outside @layer for higher specificity */

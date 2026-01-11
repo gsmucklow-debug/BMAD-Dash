@@ -39,18 +39,18 @@ class TestAICoach:
     
     def test_init_with_api_key(self, mock_gemini):
         """Test that AICoach initializes with API key"""
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         assert coach.api_key == 'test-api-key'
         assert coach.model is not None
     
     def test_init_with_default_api_key(self, mock_gemini):
         """Test that AICoach raises error with default placeholder key"""
-        coach = AICoach('your-api-key-here')
+        coach = AICoach('your-api-key-here', project_root=None)
         assert coach.api_key == 'your-api-key-here'
     
     def test_build_system_prompt(self, mock_gemini):
         """Test system prompt construction with context"""
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         context = {
             'phase': 'Implementation',
             'epic': 'epic-5',
@@ -68,7 +68,7 @@ class TestAICoach:
     
     def test_build_system_prompt_with_missing_context(self, mock_gemini):
         """Test system prompt construction handles missing context"""
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         context = {}
         
         prompt = coach._build_system_prompt(context)
@@ -92,7 +92,7 @@ class TestAICoach:
         mock_genai.configure.return_value = None
         mock_genai.GenerativeModel.return_value = mock_model
         
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         context = {'phase': 'Implementation'}
         
         chunks = list(coach.generate_stream('Test message', context))
@@ -106,7 +106,7 @@ class TestAICoach:
     def test_generate_stream_with_invalid_key(self, mock_genai):
         """Test streaming response with invalid API key raises error"""
         mock_genai.APIError = Exception
-        coach = AICoach('your-api-key-here')
+        coach = AICoach('your-api-key-here', project_root=None)
         context = {'phase': 'Implementation'}
         
         # Should raise ValueError for invalid API key
@@ -129,7 +129,7 @@ class TestAICoach:
         mock_genai.configure.return_value = None
         mock_genai.GenerativeModel.return_value = mock_model
         
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         context = {'phase': 'Implementation'}
         
         chunks = list(coach.generate_stream('Test message', context))
@@ -148,7 +148,7 @@ class TestAICoach:
         mock_genai.configure.return_value = None
         mock_genai.GenerativeModel.return_value = mock_model
         
-        coach = AICoach('test-api-key')
+        coach = AICoach('test-api-key', project_root=None)
         context = {'phase': 'Implementation'}
         
         response = coach.get_response('Test message', context)

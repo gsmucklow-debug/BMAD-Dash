@@ -50,14 +50,56 @@ async function init() {
             aiChatInstance = new AIChat('ai-chat-container');
         }
 
-        // Update AI chat with project context
+        // Update AI chat with project context (Story 5.2: Enhanced context)
         if (aiChatInstance && dashboardData.project) {
+            const currentStory = dashboardData.quick_glance?.current || {};
+            const currentEpic = dashboardData.breadcrumb?.epic || {};
+
+            // Get detailed task info from action_card
+            const actionCard = dashboardData.action_card || {};
+            const storyLayer = actionCard.story_layer || {};
+            const taskLayer = actionCard.task_layer || {};
+
+            // Find full story data in kanban for task list
+            const allStories = [
+                ...(dashboardData.kanban?.todo || []),
+                ...(dashboardData.kanban?.in_progress || []),
+                ...(dashboardData.kanban?.review || []),
+                ...(dashboardData.kanban?.done || [])
+            ];
+            const fullStoryData = allStories.find(s => s.story_id === currentStory.story_id) || {};
+            const tasks = fullStoryData.tasks || [];
+
             aiChatInstance.setProjectContext({
+                // Basic fields (legacy compatibility)
                 phase: dashboardData.project.phase || 'Unknown',
-                epic: dashboardData.breadcrumb?.epic?.id || 'Unknown',
-                story: dashboardData.breadcrumb?.story?.id || 'Unknown',
-                task: dashboardData.breadcrumb?.task?.title || 'Unknown'
+                epic: currentEpic.id || 'Unknown',
+                story: currentStory.story_id || 'Unknown',
+                task: taskLayer.title || dashboardData.breadcrumb?.task?.title || 'Unknown',
+
+                // Enhanced fields for Story 5.2
+                epicId: currentEpic.id || 'Unknown',
+                epicTitle: currentEpic.title || '',
+                storyId: currentStory.story_id || 'Unknown',
+                storyTitle: currentStory.title || '',
+                storyStatus: currentStory.status || 'Unknown',
+
+                // Task-level details (AC4: AI knows task context)
+                taskProgress: currentStory.progress || taskLayer.progress || '0/0 tasks',
+                currentTask: taskLayer.title || 'No active task',
+                currentTaskStatus: taskLayer.status || 'unknown',
+                tasks: tasks.map(t => ({
+                    id: t.task_id || t.id,
+                    title: t.title,
+                    status: t.status
+                })),
+
+                // Acceptance criteria summary
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
             });
+
+            // Update suggested prompts with new context
+            aiChatInstance.updateSuggestedPrompts();
         }
 
         // Router will handle view rendering based on hash
@@ -172,6 +214,41 @@ async function loadProject(projectRoot) {
         dashboardData = await fetchDashboardData(projectRoot);
         hideLoading();
 
+        // Update AI chat with new project context (Story 5.2)
+        if (aiChatInstance && dashboardData.project) {
+            const currentStory = dashboardData.quick_glance?.current || {};
+            const currentEpic = dashboardData.breadcrumb?.epic || {};
+            const actionCard = dashboardData.action_card || {};
+            const storyLayer = actionCard.story_layer || {};
+            const taskLayer = actionCard.task_layer || {};
+            const allStories = [
+                ...(dashboardData.kanban?.todo || []),
+                ...(dashboardData.kanban?.in_progress || []),
+                ...(dashboardData.kanban?.review || []),
+                ...(dashboardData.kanban?.done || [])
+            ];
+            const fullStoryData = allStories.find(s => s.story_id === currentStory.story_id) || {};
+            const tasks = fullStoryData.tasks || [];
+
+            aiChatInstance.setProjectContext({
+                phase: dashboardData.project.phase || 'Unknown',
+                epic: currentEpic.id || 'Unknown',
+                story: currentStory.story_id || 'Unknown',
+                task: taskLayer.title || dashboardData.breadcrumb?.task?.title || 'Unknown',
+                epicId: currentEpic.id || 'Unknown',
+                epicTitle: currentEpic.title || '',
+                storyId: currentStory.story_id || 'Unknown',
+                storyTitle: currentStory.title || '',
+                storyStatus: currentStory.status || 'Unknown',
+                taskProgress: currentStory.progress || taskLayer.progress || '0/0 tasks',
+                currentTask: taskLayer.title || 'No active task',
+                currentTaskStatus: taskLayer.status || 'unknown',
+                tasks: tasks.map(t => ({ id: t.task_id || t.id, title: t.title, status: t.status })),
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
+            });
+            aiChatInstance.updateSuggestedPrompts();
+        }
+
         // Re-render current view with new data
         router.handleRoute();
     } catch (error) {
@@ -225,6 +302,41 @@ async function handleRefresh() {
 
         // Re-fetch dashboard data
         dashboardData = await fetchDashboardData(projectRoot);
+
+        // Update AI chat with refreshed context (Story 5.2)
+        if (aiChatInstance && dashboardData.project) {
+            const currentStory = dashboardData.quick_glance?.current || {};
+            const currentEpic = dashboardData.breadcrumb?.epic || {};
+            const actionCard = dashboardData.action_card || {};
+            const storyLayer = actionCard.story_layer || {};
+            const taskLayer = actionCard.task_layer || {};
+            const allStories = [
+                ...(dashboardData.kanban?.todo || []),
+                ...(dashboardData.kanban?.in_progress || []),
+                ...(dashboardData.kanban?.review || []),
+                ...(dashboardData.kanban?.done || [])
+            ];
+            const fullStoryData = allStories.find(s => s.story_id === currentStory.story_id) || {};
+            const tasks = fullStoryData.tasks || [];
+
+            aiChatInstance.setProjectContext({
+                phase: dashboardData.project.phase || 'Unknown',
+                epic: currentEpic.id || 'Unknown',
+                story: currentStory.story_id || 'Unknown',
+                task: taskLayer.title || dashboardData.breadcrumb?.task?.title || 'Unknown',
+                epicId: currentEpic.id || 'Unknown',
+                epicTitle: currentEpic.title || '',
+                storyId: currentStory.story_id || 'Unknown',
+                storyTitle: currentStory.title || '',
+                storyStatus: currentStory.status || 'Unknown',
+                taskProgress: currentStory.progress || taskLayer.progress || '0/0 tasks',
+                currentTask: taskLayer.title || 'No active task',
+                currentTaskStatus: taskLayer.status || 'unknown',
+                tasks: tasks.map(t => ({ id: t.task_id || t.id, title: t.title, status: t.status })),
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
+            });
+            aiChatInstance.updateSuggestedPrompts();
+        }
 
         // Re-render current view (preserve view mode)
         router.handleRoute();

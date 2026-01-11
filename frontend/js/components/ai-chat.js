@@ -4,6 +4,8 @@
  */
 
 import { API } from '../api.js';
+import { SuggestedPrompts } from './suggested-prompts.js';
+import { PromptGenerator } from '../utils/prompt-generator.js';
 
 export class AIChat {
     constructor(containerId, api = new API()) {
@@ -12,6 +14,10 @@ export class AIChat {
         this.messages = [];
         this.isExpanded = true;
         this.isStreaming = false;
+
+        // Initialize suggested prompts (Story 5.2)
+        this.promptGenerator = new PromptGenerator();
+        this.suggestedPrompts = null; // Will be initialized after render
 
         this.init();
     }
@@ -29,6 +35,8 @@ export class AIChat {
     render() {
         this.container.innerHTML = `
             <div class="ai-chat-sidebar ${this.isExpanded ? 'expanded' : 'collapsed'}">
+                <div id="ai-suggested-prompts"></div>
+                
                 <div class="ai-chat-messages custom-scrollbar" id="ai-chat-messages">
                     <div class="ai-message ai-message-assistant animate-fadeIn">
                         <div class="ai-message-content">
@@ -61,6 +69,14 @@ export class AIChat {
         this.inputTextarea = document.getElementById('ai-chat-input');
         this.sendButton = document.getElementById('ai-chat-send');
 
+        // Initialize suggested prompts component
+        this.suggestedPrompts = new SuggestedPrompts('ai-suggested-prompts', (promptText) => {
+            this.sendProgrammaticMessage(promptText);
+        });
+
+        // Generate and render initial prompts
+        this.updateSuggestedPrompts();
+
         // Auto-resize textarea
         this.inputTextarea.addEventListener('input', () => {
             this.inputTextarea.style.height = 'auto';
@@ -69,7 +85,6 @@ export class AIChat {
     }
 
     attachEventListeners() {
-        // Send message on button click
         // Send message on button click
         this.sendButton.addEventListener('click', () => this.sendMessage());
 
@@ -84,9 +99,7 @@ export class AIChat {
         // Clear chat (added to toggle menu or similar in future, for now simplified)
     }
 
-    toggle() {
-        // Toggle functionality removed - chat is always expanded
-    }
+
 
     async sendMessage() {
         const message = this.inputTextarea.value.trim();
@@ -195,20 +208,20 @@ export class AIChat {
     formatMessage(content) {
         if (!content) return '';
 
-        // Simple markdown formatting
-        // Code blocks
-        content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        // Improved markdown formatting with better edge case handling
+        // Code blocks (process first to avoid conflicts)
+        content = content.replace(/```([\w]*)?\n([\s\S]*?)```/g, (match, lang, code) => {
             return `<pre class="ai-code-block"><code class="language-${lang || 'text'}">${this.escapeHtml(code.trim())}</code><button class="ai-copy-code-btn" aria-label="Copy code">Copy</button></pre>`;
         });
 
-        // Inline code
-        content = content.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+        // Inline code (match non-greedy, avoid conflicts with code blocks)
+        content = content.replace(/`([^`\n]+?)`/g, '<code class="ai-inline-code">$1</code>');
 
-        // Bold
-        content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        // Bold (non-greedy, avoid matching single asterisks)
+        content = content.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
 
-        // Italic
-        content = content.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        // Italic (non-greedy, require space or start/end of line to avoid conflicts)
+        content = content.replace(/(^|\s)\*([^*\n]+?)\*(\s|$)/g, '$1<em>$2</em>$3');
 
         // Line breaks
         content = content.replace(/\n/g, '<br>');
@@ -237,7 +250,7 @@ export class AIChat {
         `;
     }
 
-    // Removed duplicate getProjectContext
+
 
     addCopyButtonsToCodeBlocks() {
         const codeBlocks = this.messagesContainer.querySelectorAll('.ai-code-block');
@@ -271,11 +284,41 @@ export class AIChat {
      * @returns {Object} Project context
      */
     getProjectContext() {
+        // Return minimal/unknown context if not set - avoid hardcoded fallbacks
         return this.projectContext || {
-            phase: 'Implementation',
-            epic: 'epic-5',
-            story: '5.1',
-            task: '1'
+            phase: 'Unknown',
+            epicId: 'Unknown',
+            epic: 'Unknown',
+            storyId: 'Unknown',
+            story: 'Unknown',
+            storyTitle: '',
+            storyStatus: 'Unknown',
+            task: ''
         };
+    }
+
+    /**
+     * Send a message programmatically (for suggested prompts)
+     * @param {string} text - Message text to send
+     */
+    sendProgrammaticMessage(text) {
+        if (!text || this.isStreaming) {
+            return;
+        }
+
+        // Set the input value and trigger send
+        this.inputTextarea.value = text;
+        this.sendMessage();
+    }
+
+    /**
+     * Update suggested prompts based on current project context
+     */
+    updateSuggestedPrompts() {
+        if (!this.suggestedPrompts) return;
+
+        const context = this.getProjectContext();
+        const prompts = this.promptGenerator.generatePrompts(context);
+        this.suggestedPrompts.render(prompts);
     }
 }

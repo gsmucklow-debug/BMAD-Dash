@@ -15,8 +15,9 @@ development_status:
   4-1-three-layer-action-card-one-click-command-copy: done
   4-2-workflow-history-gap-detection: done
   5-1-gemini-api-integration-streaming-chat: done
-  5-2-project-aware-qa-suggested-prompts: backlog
+  5-2-project-aware-qa-suggested-prompts: review
   5-3-ai-agent-output-validation-workflow-gap-warnings: backlog
+  5-4-evidence-based-task-progress-inference: backlog
   epic-0: in-progress
   epic-0-retrospective: optional
   epic-1: in-progress
