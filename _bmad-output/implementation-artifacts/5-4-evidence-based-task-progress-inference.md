@@ -6,140 +6,249 @@ status: 'backlog'
 created: '2026-01-11'
 updated: '2026-01-11'
 assignee: 'dev-agent'
-priority: 'medium'
-estimatedHours: 12
+priority: 'high'
+estimatedHours: 16
 actualHours: 0
 dependencies: ['5.2']
-tags: ['ai-coach', 'automation', 'progress-tracking', 'git']
+tags: ['ai-coach', 'automation', 'progress-tracking', 'git', 'caching']
 ---
 
 # Story 5.4: Evidence-Based Task Progress Inference
 
 ## User Story
 **As a** developer using BMAD Dash  
-**I want** the dashboard to automatically infer task completion from evidence (git commits, file changes, tests)  
-**So that** I don't have to manually update task checkboxes and the AI Coach always knows my actual progress
+**I want** the dashboard to maintain a running project state document that tracks all epics, stories, tasks, and evidence  
+**So that** the AI Coach has complete project awareness and dashboard refreshes are instant
 
 ## Problem Statement
-Currently, task completion status only updates when someone manually edits the story file's checkboxes. This creates:
-- **Friction**: Developers must stop to update checkboxes
-- **Staleness**: AI Coach sees outdated progress (e.g., "0/8 tasks" when 6 are done)
-- **Cognitive load**: Must remember what's done vs. what's checked
+Currently:
+- **Every refresh re-parses everything**: Story files, git logs, test results - slow and wasteful
+- **AI has limited context**: Only knows current story, not project history
+- **Task status is stale**: Checkboxes don't reflect actual work done
+- **No persistence**: Evidence collected is thrown away after each request
 
-## Solution
-BMAD Dash acts as an **observer** that infers progress from evidence:
-- Git commits referencing tasks/stories
-- File existence matching task deliverables
-- Test results showing coverage
-- Code review workflow completion
+## Solution: `project-state.json` - The Running Document
 
-This keeps BMAD Dash **external** to the BMAD Method - no custom agents needed.
+A single JSON file that serves as **the source of truth** for:
+1. **All project state** - epics, stories, tasks, statuses
+2. **Cached evidence** - commits, test results, review status per story
+3. **AI context** - everything the AI needs to know in one file
+4. **Fast updates** - only refresh what changed, persist the rest
+
+### File Location
+```
+_bmad-output/implementation-artifacts/project-state.json
+```
+
+### Structure
+```json
+{
+  "project": {
+    "name": "BMAD Dash",
+    "phase": "Implementation",
+    "bmad_version": "latest",
+    "last_updated": "2026-01-11T13:16:52Z"
+  },
+  "current": {
+    "epic_id": "epic-5",
+    "epic_title": "AI Coach Integration",
+    "story_id": "5.3",
+    "story_title": "AI Agent Output Validation Workflow Gap Warnings",
+    "story_status": "backlog",
+    "task_id": null,
+    "task_title": null,
+    "next_action": "/bmad-bmm-workflows-dev-story 5.3"
+  },
+  "epics": {
+    "epic-5": {
+      "id": "epic-5",
+      "title": "AI Coach Integration",
+      "status": "in-progress",
+      "stories_done": 2,
+      "stories_total": 4,
+      "stories": ["5.1", "5.2", "5.3", "5.4"]
+    }
+  },
+  "stories": {
+    "5.2": {
+      "id": "5.2",
+      "title": "Project-Aware Q&A & Suggested Prompts",
+      "epic": "epic-5",
+      "status": "done",
+      "purpose": "AI suggestions based on current project state with ready-to-click prompts",
+      "evidence": {
+        "commits": 3,
+        "tests_passed": 16,
+        "tests_total": 16,
+        "reviewed": true,
+        "healthy": true,
+        "last_commit": "2026-01-11T12:56:00Z"
+      },
+      "tasks": {
+        "done": 8,
+        "total": 8,
+        "items": [
+          {"id": 1, "title": "Design Suggested Prompts Component", "status": "done", "inferred": true},
+          {"id": 2, "title": "Implement Context-Aware Prompt Generation", "status": "done", "inferred": true}
+        ]
+      },
+      "last_updated": "2026-01-11T13:00:00Z"
+    },
+    "5.3": {
+      "id": "5.3",
+      "title": "AI Agent Output Validation Workflow Gap Warnings",
+      "epic": "epic-5",
+      "status": "backlog",
+      "purpose": "Validate AI agent outputs and detect workflow gaps",
+      "evidence": {
+        "commits": 0,
+        "tests_passed": 0,
+        "tests_total": 0,
+        "reviewed": false,
+        "healthy": false
+      },
+      "tasks": {
+        "done": 0,
+        "total": 5,
+        "items": []
+      }
+    }
+  }
+}
+```
 
 ## Acceptance Criteria
 
-### AC1: File-Based Progress Detection
-**Given** a story has tasks with expected deliverables (e.g., "Create suggested-prompts.js")  
-**When** the dashboard parses the project  
-**Then** it detects if the expected file exists  
-**And** infers task as "likely done" if file exists with recent changes
+### AC1: Project State File Creation & Updates
+**Given** dashboard loads for the first time  
+**When** no `project-state.json` exists  
+**Then** it creates one by scanning all stories, epics, and evidence  
+**And** saves the complete project state to disk
 
-### AC2: Git Commit Correlation
-**Given** git commits exist for the current story's timeframe  
-**When** AI Coach builds context  
-**Then** it includes recent commit messages relevant to the story  
-**And** can answer "What work has been committed for this story?"
+### AC2: Incremental Updates on Refresh
+**Given** user clicks "Refresh"  
+**When** dashboard reloads  
+**Then** it reads `project-state.json` first (instant)  
+**Then** checks file mtimes for stories that changed  
+**And** only re-parses and updates those stories  
+**And** saves back to `project-state.json`
 
-### AC3: Dual Progress Display
-**Given** a story with inferred progress different from checkbox status  
-**When** the dashboard displays progress  
-**Then** shows both: "Official: 0/8 tasks | Evidence: 6/8 likely complete"  
-**And** highlights the discrepancy for user awareness
+### AC3: AI Coach Complete Context
+**Given** AI Chat receives a message  
+**When** building system prompt  
+**Then** includes entire `project-state.json` as context  
+**And** AI knows all epics, all stories, all task progress, all evidence  
+**And** can answer "What's the status of Story 3.3?" without parsing files
 
-### AC4: AI Coach Reports Inferred Progress
-**Given** AI Coach is asked "What tasks remain?"  
-**When** generating response  
-**Then** uses inferred status (not just checkboxes)  
-**And** explains: "Based on file changes and commits, Task 1-3 appear complete"
+### AC4: Task Inference from Evidence
+**Given** git commit message says "feat(5.3): Task 2 complete"  
+**When** evidence collector runs  
+**Then** updates `stories["5.3"].tasks.items[1].status = "done"`  
+**And** sets `inferred: true` to indicate auto-detected  
+**And** persists to `project-state.json`
 
-### AC5: Task-to-Deliverable Mapping
-**Given** story tasks describe expected outputs  
-**When** parser analyzes tasks  
-**Then** extracts expected file paths/patterns from task descriptions  
-**And** maps tasks to their deliverables for verification
+### AC5: Dual Progress Display
+**Given** story has official checkboxes showing 2/8 tasks  
+**But** evidence suggests 6/8 tasks are done  
+**When** dashboard displays progress  
+**Then** shows: "Progress: 6/8 tasks (2 official, 4 inferred)"  
+**And** explains discrepancy on hover
 
-### AC6: Test Coverage Correlation
-**Given** story has associated test files  
-**When** tests have been run  
-**Then** infers "Task 7: Write Tests" as in-progress/done based on test file existence and results
+### AC6: Performance Target
+**Given** project has 20+ stories  
+**When** dashboard loads with warm cache  
+**Then** loads in <100ms (reading single JSON file)  
+**When** refresh with 1 changed story  
+**Then** completes in <300ms (only re-parses 1 story + git check)
 
 ## Tasks
 
-### Task 1: Design Task-Deliverable Mapping
-- [ ] Analyze task description patterns to extract expected files
-- [ ] Create mapping rules (e.g., "Create X.js" → expect file X.js)
-- [ ] Handle common patterns: "Create", "Add", "Implement", "Write tests for"
-- [ ] Store mappings in parsed story data
+### Task 1: Design `project-state.json` Schema
+- [ ] Finalize JSON schema (as shown above)
+- [ ] Define version field for future migrations
+- [ ] Add validation for required fields
+- [ ] Document schema in README
 
-### Task 2: Implement File Evidence Collector
-- [ ] Create `evidence_collector.py` service
-- [ ] Check file existence for mapped deliverables
-- [ ] Get file modification times
-- [ ] Compare to story start date
-- [ ] Calculate confidence score per task
+### Task 2: Create ProjectStateCache Service
+- [ ] Create `backend/services/project_state_cache.py`
+- [ ] Implement `load()` - read and parse JSON
+- [ ] Implement `save()` - write JSON with pretty print
+- [ ] Implement `get_story(id)` - quick lookup
+- [ ] Implement `update_story(id, data)` - merge updates
+- [ ] Handle missing file (create from scratch)
 
-### Task 3: Add Git Commit Correlation
-- [ ] Parse git log for commits since story started
-- [ ] Filter commits by story ID mentions or file patterns
-- [ ] Extract commit messages for AI context
-- [ ] Map commits to likely tasks
+### Task 3: Bootstrap from Existing Data
+- [ ] Create `bootstrap_project_state()` function
+- [ ] Scan all story files in `_bmad-output/implementation-artifacts/`
+- [ ] Parse epics.md for epic structure
+- [ ] Populate initial state from current data
+- [ ] Call git/test evidence collectors for each story
 
-### Task 4: Update Dashboard API with Inferred Progress
-- [ ] Add `inferred_progress` field to story data
-- [ ] Include evidence summary per task
-- [ ] Return both official and inferred task counts
-- [ ] Add `evidence` array to task objects
+### Task 4: Integrate with Dashboard API
+- [ ] Modify `/api/dashboard` to use ProjectStateCache
+- [ ] Load from cache first, then validate
+- [ ] Only re-parse stories with changed mtimes
+- [ ] Update cache and save on changes
+- [ ] Add `cache_age_ms` to response for debugging
 
-### Task 5: Update AI Coach Context with Evidence
-- [ ] Include inferred progress in system prompt
-- [ ] Add recent commit messages to context
-- [ ] Update "what tasks remain" logic to use evidence
-- [ ] Format evidence clearly in AI responses
+### Task 5: Integrate with AI Coach
+- [ ] Load `project-state.json` in AICoach constructor
+- [ ] Include full project state in system prompt
+- [ ] Add "Project Summary" section with epic/story counts
+- [ ] AI can now answer questions about ANY story
 
-### Task 6: Update Dashboard UI for Dual Progress
-- [ ] Display inferred progress alongside official
-- [ ] Add visual indicator when they differ
-- [ ] Show "evidence suggests..." tooltip on hover
-- [ ] Keep design minimal and unobtrusive
+### Task 6: Implement Task Inference
+- [ ] Parse task descriptions for expected deliverables
+- [ ] Check file existence for deliverables
+- [ ] Parse git commits for task references
+- [ ] Update task status with `inferred: true` flag
+- [ ] Save inferred status to project-state.json
 
-### Task 7: Write Tests
-- [ ] Unit tests for task-deliverable mapping
-- [ ] Unit tests for evidence collection
-- [ ] Integration test for git correlation
-- [ ] Test accuracy on real story files
+### Task 7: Update Dashboard UI
+- [ ] Display inferred progress in story cards
+- [ ] Add visual indicator for inferred vs official
+- [ ] Show evidence summary tooltip on hover
+- [ ] Update Quick Glance with inferred progress
+
+### Task 8: Write Tests
+- [ ] Unit tests for ProjectStateCache
+- [ ] Unit tests for task inference
+- [ ] Integration test for bootstrap
+- [ ] Performance test for cache load time
 
 ## Technical Notes
 
-### Evidence Signals (Priority Order)
-1. **File Exists** + recent mtime → High confidence task started/done
-2. **Git Commit** mentions task → Medium-high confidence
-3. **Test File** exists → Medium confidence for test tasks
-4. **Code Review ran** → High confidence story is review-ready
+### Why JSON over YAML?
+- **Parse speed**: 5-10x faster than YAML
+- **Programmatic updates**: Easy to modify specific fields
+- **AI-friendly**: Perfect for system prompts
+- **Standard**: Every language has native JSON support
 
-### Handling Uncertainty
-- Use confidence levels: "likely done", "possibly done", "no evidence"
-- Never auto-update checkboxes (user controls official status)
-- AI explains its reasoning: "I see suggested-prompts.js was created 2 hours ago..."
+### Cache Invalidation Strategy
+```
+1. On load: Check project-state.json mtime
+2. For each story in cache: Check story file mtime
+3. If story file newer than cache entry: Re-parse that story
+4. If git repo has new commits: Re-run evidence collection
+5. Save updated cache
+```
 
-### Performance Considerations
-- Cache evidence collection (invalidate on file changes)
-- Limit git log to last 50 commits
-- Only collect evidence for current story (not all stories)
+### AI Context Size
+- Full project-state.json: ~5-10KB typical
+- Well within Gemini context window
+- Can truncate completed story details if needed
+
+### Migration Path
+- `version` field in JSON for future schema changes
+- Backward-compatible readers
+- Auto-upgrade on load if needed
 
 ## Definition of Done
-- [ ] All acceptance criteria met
-- [ ] Evidence collection working for file + git signals
-- [ ] AI Coach uses inferred progress in responses
-- [ ] Dashboard shows dual progress when relevant
+- [ ] `project-state.json` created and maintained automatically
+- [ ] Dashboard loads from cache in <100ms
+- [ ] Refresh updates only changed stories in <300ms
+- [ ] AI Coach receives full project state
+- [ ] Task inference working for file + git signals
 - [ ] Tests written and passing
 - [ ] Works without modifying BMAD Method/agents
 
@@ -151,3 +260,4 @@ This keeps BMAD Dash **external** to the BMAD Method - no custom agents needed.
 
 ## Review Notes
 <!-- Code review feedback will be added here -->
+
