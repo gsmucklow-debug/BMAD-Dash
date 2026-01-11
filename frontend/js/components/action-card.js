@@ -34,7 +34,7 @@ export function renderActionCard(data) {
     }
 
     return `
-        <div class="action-card bg-bmad-gray border-2 border-blue-500 rounded-lg p-6 space-y-6 backdrop-blur-sm bg-opacity-90">
+        <div class="action-card bg-bmad-gray rounded-lg p-6 space-y-6 backdrop-blur-sm bg-opacity-90">
             <!-- Layer 1: Story -->
             ${storyLayer ? `
                 <div class="story-layer">
@@ -214,7 +214,7 @@ function getStatusColor(status) {
 function renderWorkflowHistorySection(data, storyId) {
     // Find the story in kanban data to get workflow_history and gaps
     let storyData = null;
-    
+
     if (data.kanban) {
         // Search all columns for the story
         for (const column of Object.values(data.kanban)) {
@@ -225,11 +225,11 @@ function renderWorkflowHistorySection(data, storyId) {
             }
         }
     }
-    
+
     if (!storyData) {
         return '';
     }
-    
+
     // Use WorkflowHistory class to render as HTML string
     const workflowHistory = new WorkflowHistory();
     return workflowHistory.renderAsHtmlString(storyData);
@@ -240,7 +240,7 @@ function renderWorkflowHistorySection(data, storyId) {
  * @param {string} text - Text to copy
  * @param {HTMLElement} element - Clicked element
  */
-window.copyToClipboard = function(text, element) {
+window.copyToClipboard = function (text, element) {
     navigator.clipboard.writeText(text).then(() => {
         const originalText = element.textContent;
         element.textContent = '✓ Copied!';

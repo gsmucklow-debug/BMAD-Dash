@@ -40,7 +40,6 @@ export function render(router, activeView = '/dashboard') {
 
     container.innerHTML = `
         <div class="flex gap-2 items-center">
-            <span class="text-sm text-bmad-muted mr-2">View:</span>
             ${buttonsHTML}
         </div>
     `;

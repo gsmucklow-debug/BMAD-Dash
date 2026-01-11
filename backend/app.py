@@ -48,8 +48,9 @@ def create_app():
     from backend.api.refresh import refresh_bp
     app.register_blueprint(refresh_bp)
 
-    # Register other blueprints (will be added in later stories)
-    # from backend.api import ai_chat
+    # Register AI Chat blueprint (Story 5.1)
+    from backend.api.ai_chat import ai_chat_bp
+    app.register_blueprint(ai_chat_bp)
     
     @app.route('/')
     def index():

@@ -311,7 +311,8 @@ class BMADParser:
                 file_path=story_path,
                 mtime=mtime,
                 workflow_history=workflow_history,
-                gaps=gaps
+                gaps=gaps,
+                last_updated=frontmatter.get('last_updated')
             )
             
             # Cache the story

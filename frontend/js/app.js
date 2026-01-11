@@ -8,6 +8,7 @@ import { render as renderBreadcrumb } from './components/breadcrumb.js';
 import { render as renderQuickGlance } from './components/quick-glance.js';
 import { render as renderViewSwitcher, updateActive } from './components/view-switcher.js';
 import { init as initEvidenceModal } from './components/evidence-modal.js';
+import { AIChat } from './components/ai-chat.js';
 import { render as renderDashboard } from './views/dashboard.js';
 import { render as renderTimeline } from './views/timeline.js';
 import { render as renderList } from './views/list.js';
@@ -17,6 +18,7 @@ const DEFAULT_PROJECT_ROOT = '';
 // Global state
 let router = null;
 let dashboardData = null;
+let aiChatInstance = null;
 
 /**
  * Initialize the application on page load
@@ -42,6 +44,21 @@ async function init() {
 
         // Render view switcher (Story 3.1)
         renderViewSwitcher(router, router.getCurrentRoute());
+
+        // Initialize AI Chat once (persists across views)
+        if (!aiChatInstance) {
+            aiChatInstance = new AIChat('ai-chat-container');
+        }
+
+        // Update AI chat with project context
+        if (aiChatInstance && dashboardData.project) {
+            aiChatInstance.setProjectContext({
+                phase: dashboardData.project.phase || 'Unknown',
+                epic: dashboardData.breadcrumb?.epic?.id || 'Unknown',
+                story: dashboardData.breadcrumb?.story?.id || 'Unknown',
+                task: dashboardData.breadcrumb?.task?.title || 'Unknown'
+            });
+        }
 
         // Router will handle view rendering based on hash
         router.handleRoute();

@@ -25,6 +25,7 @@ class Story:
     mtime: float = 0.0
     workflow_history: List[Dict[str, Any]] = field(default_factory=list)  # Workflow execution history
     gaps: List[Dict[str, Any]] = field(default_factory=list)  # Detected workflow gaps
+    last_updated: Optional[str] = None  # ISO date from frontmatter
     
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON responses"""
@@ -40,7 +41,8 @@ class Story:
             "file_path": self.file_path,
             "mtime": self.mtime,
             "workflow_history": self.workflow_history,
-            "gaps": self.gaps
+            "gaps": self.gaps,
+            "last_updated": self.last_updated
         }
     
     @classmethod
@@ -59,5 +61,6 @@ class Story:
             file_path=data.get("file_path", ""),
             mtime=data.get("mtime", 0.0),
             workflow_history=data.get("workflow_history", []),
-            gaps=data.get("gaps", [])
+            gaps=data.get("gaps", []),
+            last_updated=data.get("last_updated")
         )

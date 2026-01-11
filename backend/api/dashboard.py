@@ -218,27 +218,14 @@ def build_breadcrumb(project) -> Dict[str, Any]:
             "title": current_epic.title
         }
         
-        # Find current story (in-progress or ready-for-dev)
-        current_story = None
-        for story in current_epic.stories:
-            if story.status == "in-progress":
-                current_story = story
-                break
-        
-        if not current_story:
-            for story in current_epic.stories:
-                if story.status == "ready-for-dev":
-                    current_story = story
-                    break
-        
-        if current_story:
+        if target_story and target_story.epic == int(current_epic.epic_id):
             breadcrumb["story"] = {
-                "id": current_story.story_id,
-                "title": current_story.title
+                "id": target_story.story_id,
+                "title": target_story.title
             }
             
             # Find first todo task
-            for task in current_story.tasks:
+            for task in target_story.tasks:
                 if task.status == "todo":
                     breadcrumb["task"] = {
                         "id": task.task_id,

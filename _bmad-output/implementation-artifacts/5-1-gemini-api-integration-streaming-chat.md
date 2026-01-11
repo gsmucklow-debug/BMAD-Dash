@@ -2,7 +2,8 @@
 story_id: "5.1"
 title: "Gemini API Integration & Streaming Chat"
 epic: "epic-5"
-status: "ready-for-dev"
+status: "done"
+completed: "2026-01-10"
 last_updated: "2026-01-10"
 ---
 
@@ -15,80 +16,84 @@ So that **I can ask project-aware questions and get answers in real-time**.
 ## Acceptance Criteria
 
 ### Chat Interface
-- [ ] **Sidebar Layout**
-    - [ ] Displays chat interface on the right side of the dashboard (300-400px width).
-    - [ ] Chat remains accessible/visible from all view modes (Dashboard, Timeline, List).
-    - [ ] Toggle button allows expanding/collapsing the sidebar.
-- [ ] **Interaction Elements**
-    - [ ] Input textarea accepts user questions (multiline support).
-    - [ ] "Send" button is clickable with minimum 44x44px target size (NFR10).
-    - [ ] "Clear Chat" option to reset conversation.
+- [x] **Sidebar Layout**
+    - [x] Displays chat interface on the right side of the dashboard (300-400px width).
+    - [x] Chat remains accessible/visible from all view modes (Dashboard, Timeline, List).
+    - [x] Toggle button allows expanding/collapsing the sidebar.
+- [x] **Interaction Elements**
+    - [x] Input textarea accepts user questions (multiline support).
+    - [x] "Send" button is clickable with minimum 44x44px target size (NFR10).
+    - [x] "Clear Chat" option to reset conversation.
 
 ### Backend Integration
-- [ ] **API Endpoint**
-    - [ ] Implements `POST /api/ai-chat` endpoint.
-    - [ ] Accepts JSON payload with `message` and `project_context` (phase, epic, story).
-- [ ] **Gemini Integration**
-    - [ ] Uses `google-generativeai` SDK to call Gemini 3 Flash model.
-    - [ ] Injects BMAD Method documentation and project state into the system prompt.
-    - [ ] Handles API errors gracefully (e.g., rate limits, invalid key).
-- [ ] **Streaming Response**
-    - [ ] Returns Server-Sent Events (SSE) stream.
-    - [ ] Stream format follows `data: {"token": "..."}` pattern.
+- [x] **API Endpoint**
+    - [x] Implements `POST /api/ai-chat` endpoint.
+    - [x] Accepts JSON payload with `message` and `project_context` (phase, epic, story).
+- [x] **Gemini Integration**
+    - [x] Uses `google-generativeai` SDK to call Gemini 3 Flash model.
+    - [x] Injects BMAD Method documentation and project state into the system prompt.
+    - [x] Handles API errors gracefully (e.g., rate limits, invalid key).
+- [x] **Streaming Response**
+    - [x] Returns Server-Sent Events (SSE) stream.
+    - [x] Stream format follows `data: {"token": "..."}` pattern.
 
 ### Performance & UX
-- [ ] **Responsiveness**
-    - [ ] First token appears within <200ms (NFR6).
-    - [ ] Tokens appear progressively as generated (no buffering full response).
-- [ ] **Conversation Management**
-    - [ ] Chat history is maintained during the session (in-memory or localStorage).
-    - [ ] AI remembers previous turns in the conversation.
-- [ ] **Content Formatting**
-    - [ ] Markdown in responses is rendered correctly.
-    - [ ] Code blocks include a "Copy" button.
+- [x] **Responsiveness**
+    - [x] First token appears within <200ms (NFR6).
+    - [x] Tokens appear progressively as generated (no buffering full response).
+- [x] **Conversation Management**
+    - [x] Chat history is maintained during the session (in-memory or localStorage).
+    - [x] AI remembers previous turns in the conversation.
+- [x] **Content Formatting**
+    - [x] Markdown in responses is rendered correctly.
+    - [x] Code blocks include a "Copy" button.
 
 ### Security
-- [ ] **Key Management**
-    - [ ] `GEMINI_API_KEY` is loaded from `.env`.
-    - [ ] API key is NEVER sent to the frontend.
+- [x] **Key Management**
+    - [x] `GEMINI_API_KEY` is loaded from `.env`.
+    - [x] API key is NEVER sent to the frontend.
 
 ## Implementation Tasks
 
 ### Backend - API & Service
-- [ ] **Setup Configuration** (`backend/config.py`, `.env`)
-    - [ ] Add `GEMINI_API_KEY` to environment configuration.
-    - [ ] Initialize Gemini client.
-- [ ] **Create AI Service** (`backend/services/ai_service.py`)
-    - [ ] Implement `generate_stream(message, context)` function.
-    - [ ] Construct system prompt with BMAD context.
-- [ ] **Create API Route** (`backend/api/ai_chat.py`)
-    - [ ] Implement `POST /api/ai-chat` route handler.
-    - [ ] Setup SSE response generator.
+- [x] **Setup Configuration** (`backend/config.py`, `.env`)
+    - [x] Add `GEMINI_API_KEY` to environment configuration.
+    - [x] Initialize Gemini client.
+- [x] **Create AI Service** (`backend/services/ai_coach.py`)
+    - [x] Implement `generate_stream(message, context)` function.
+    - [x] Construct system prompt with BMAD context.
+- [x] **Create API Route** (`backend/api/ai_chat.py`)
+    - [x] Implement `POST /api/ai-chat` route handler.
+    - [x] Setup SSE response generator.
 
 ### Frontend - Components
-- [ ] **Create Chat Component** (`frontend/js/components/ai-chat.js`)
-    - [ ] Implement sidebar layout and toggle logic.
-    - [ ] Implement message list rendering with Markdown support.
-    - [ ] Implement input area and send logic.
-- [ ] **Implement Streaming Client** (`frontend/js/api.js`)
-    - [ ] Add `streamChatResponse` function using `fetch` and `ReadableStream`.
-- [ ] **Dashboard Integration** (`frontend/js/views/dashboard.js`)
-    - [ ] Add AI Chat component to the main layout.
+- [x] **Create Chat Component** (`frontend/js/components/ai-chat.js`)
+    - [x] Implement sidebar layout and toggle logic.
+    - [x] Implement message list rendering with Markdown support.
+    - [x] Implement input area and send logic.
+- [x] **Implement Streaming Client** (`frontend/js/api.js`)
+    - [x] Add `streamChatResponse` function using `fetch` and `ReadableStream`.
+- [x] **Dashboard Integration** (`frontend/js/views/dashboard.js`)
+    - [x] Add AI Chat component to the main layout.
 
 ### Styling & UX
-- [ ] **Sidebar Styling** (`frontend/css/input.css`)
-    - [ ] Fixed position right sidebar with backdrop blur or distinct background.
-    - [ ] Markdown typography styles for chat messages.
-    - [ ] Loading state animations (typing indicator).
+- [x] **Sidebar Styling** (`frontend/css/input.css`)
+    - [x] Fixed position right sidebar with backdrop blur or distinct background.
+    - [x] Markdown typography styles for chat messages.
+    - [x] Loading state animations (typing indicator).
 
 ### Verification
-- [ ] **Manual Testing**
-    - [ ] Verify streaming works without buffering.
-    - [ ] Check first-token latency.
-    - [ ] Verify context awareness (ask "What phase is this project in?").
-- [ ] **Automated Tests**
-    - [ ] Test API endpoint accepts correct payload.
-    - [ ] Test error handling for missing API key.
+- [x] **Manual Testing**
+    - [x] Verify streaming works without buffering.
+    - [x] Check first-token latency.
+    - [x] Verify context awareness (ask "What phase is this project in?").
+- [x] **Automated Tests**
+    - [x] Test API endpoint accepts correct payload.
+    - [x] Test error handling for missing API key.
+
+### Review Follow-ups (AI)
+- [ ] [AI-Review][Low] Refactor `frontend/css/input.css` into smaller modules if it grows larger.
+- [ ] [AI-Review][Low] Remove deprecated `sendChatMessage` method from `frontend/js/api.js` when all consumers are migrated.
 
 ## Dev Notes
 

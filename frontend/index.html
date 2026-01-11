@@ -1,65 +1,66 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BMAD Dash - Project Orientation Dashboard</title>
     <link href="/css/output.css?v=20260110" rel="stylesheet">
 </head>
+
 <body class="bg-bmad-dark text-bmad-text min-h-screen">
-    <div id="app" class="container mx-auto px-4 py-6">
+    <div id="app" class="max-w-full px-6 py-6 mx-auto">
         <!-- Project Root Selector with Refresh Button -->
         <div id="project-selector" class="mb-6 flex items-center gap-4 p-4 bg-bmad-gray rounded-lg">
             <label for="project-root-input" class="text-sm text-bmad-text font-medium">Project Root:</label>
-            <input
-                type="text"
-                id="project-root-input"
+            <input type="text" id="project-root-input"
                 class="flex-1 px-3 py-2 bg-bmad-dark text-bmad-text border border-bmad-muted rounded focus:outline-none focus:ring-2 focus:ring-bmad-accent"
-                placeholder="F:/BMAD Dash"
-            />
-            <button
-                id="load-project-btn"
-                class="px-6 py-2 bg-bmad-accent text-white rounded font-medium hover:bg-opacity-80 transition-colors min-w-[44px] min-h-[44px]"
-            >
+                placeholder="F:/BMAD Dash" />
+            <button id="load-project-btn"
+                class="px-6 py-2 bg-bmad-accent text-white rounded font-medium hover:bg-opacity-80 transition-colors min-w-[44px] min-h-[44px]">
                 Load Project
             </button>
-            <button
-                id="refresh-btn"
+            <button id="refresh-btn"
                 class="refresh-button px-6 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-colors min-w-[44px] min-h-[44px]"
-                aria-label="Refresh dashboard data"
-                title="Refresh dashboard data"
-            >
+                aria-label="Refresh dashboard data" title="Refresh dashboard data">
                 ↻ Refresh
             </button>
             <span id="project-loading" class="text-bmad-muted text-sm hidden">Loading...</span>
         </div>
-        
+
         <!-- Breadcrumb Navigation -->
         <nav id="breadcrumb-container" class="mb-6">
             <!-- Breadcrumb will render here -->
         </nav>
-        
+
         <!-- View Switcher (Story 3.1)  -->
         <div id="view-switcher-container" class="mb-6">
             <!-- View Switcher will render here -->
         </div>
-        
+
         <!-- Quick Glance Bar (Placeholder for Story 1.5) -->
         <div id="quick-glance-container" class="mb-6">
             <!-- Quick Glance will render in Story 1.5 -->
         </div>
-        
-        <!-- Main Content Area (Future Kanban Board) -->
-        <main id="main-content" class="mt-8">
-            <div id="loading" class="text-center text-bmad-muted">
-                Loading dashboard...
+
+        <!-- Main Content Area with persistent AI Chat sidebar -->
+        <div class="flex gap-6 h-[calc(100vh-240px)] overflow-hidden">
+            <main id="main-content" class="flex-1 min-w-0 overflow-auto">
+                <div id="loading" class="text-center text-bmad-muted">
+                    Loading dashboard...
+                </div>
+                <div id="error" class="hidden text-red-500 text-center p-4 bg-bmad-gray rounded">
+                    <!-- Error messages -->
+                </div>
+            </main>
+            <!-- Persistent AI Chat Sidebar -->
+            <div id="ai-chat-container" class="w-[576px] flex-shrink-0 h-full">
+                <!-- AI Chat will render here and persist across views -->
             </div>
-            <div id="error" class="hidden text-red-500 text-center p-4 bg-bmad-gray rounded">
-                <!-- Error messages -->
-            </div>
-        </main>
+        </div>
     </div>
-    
+
     <script type="module" src="/js/app.js"></script>
 </body>
+
 </html>

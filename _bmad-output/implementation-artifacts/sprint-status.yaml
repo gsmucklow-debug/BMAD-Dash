@@ -14,7 +14,7 @@ development_status:
   3-3-minimal-list-view-manual-refresh: done
   4-1-three-layer-action-card-one-click-command-copy: done
   4-2-workflow-history-gap-detection: done
-  5-1-gemini-api-integration-streaming-chat: ready-for-dev
+  5-1-gemini-api-integration-streaming-chat: done
   5-2-project-aware-qa-suggested-prompts: backlog
   5-3-ai-agent-output-validation-workflow-gap-warnings: backlog
   epic-0: in-progress
@@ -25,7 +25,7 @@ development_status:
   epic-2-retrospective: optional
   epic-3: done
   epic-3-retrospective: optional
-  epic-4: in-progress
+  epic-4: done
   epic-4-retrospective: optional
   epic-5: in-progress
   epic-5-retrospective: optional

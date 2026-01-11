@@ -32,7 +32,7 @@ export function render(data) {
     // Clear main content and show Action Card + Kanban board
     const projectRoot = data.project.root_path;
     container.innerHTML = `
-        <div class="flex flex-col gap-6 p-6 h-[calc(100vh-140px)]">
+        <div class="flex flex-col gap-6 h-full">
             ${renderActionCard(data)}
             ${renderKanbanBoard(data.kanban, projectRoot)}
         </div>
@@ -60,7 +60,7 @@ function renderKanbanBoard(kanbanData, projectRoot) {
     };
 
     return `
-        <div class="grid grid-cols-4 gap-4 flex-1 min-h-0 overflow-hidden">
+        <div class="grid grid-cols-4 gap-4 flex-1 min-h-0 overflow-x-auto custom-scrollbar pb-2">
             ${Object.entries(columns).map(([id, col]) => renderColumn(id, col, projectRoot)).join('')}
         </div>
     `;
@@ -77,7 +77,7 @@ function normalizeStatus(status) {
 
 function renderColumn(id, column, projectRoot) {
     return `
-        <div class="flex flex-col h-full rounded-lg border ${column.color} bg-bmad-surface/30 backdrop-blur-sm overflow-hidden">
+        <div class="flex flex-col h-full rounded-lg border ${column.color} bg-bmad-surface/30 backdrop-blur-sm overflow-hidden min-w-[280px]">
             <div class="p-3 border-b border-bmad-gray flex justify-between items-center bg-bmad-surface/50">
                 <h3 class="font-medium text-sm text-bmad-text uppercase tracking-wider">${column.title}</h3>
                 <span class="text-xs text-bmad-muted bg-bmad-surface px-2 py-0.5 rounded-full">${column.items.length}</span>
