@@ -19,6 +19,7 @@ development_status:
   5-3-ai-agent-output-validation-workflow-gap-warnings: done
   5-4-evidence-based-task-progress-inference: done
   5-5-critical-fix-ai-context-cache: done
+  5-55-smart-per-project-cache: done
   5-6-automated-bmad-documentation-sync: todo
   epic-0: in-progress
   epic-0-retrospective: done
