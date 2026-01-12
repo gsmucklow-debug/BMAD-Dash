@@ -34,3 +34,6 @@ _bmad/
 
 # Backup files
 *.bak
+
+# Runtime cache (auto-generated)
+_bmad-output/implementation-artifacts/project-state.json
