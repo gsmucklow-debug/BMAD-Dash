@@ -19,6 +19,7 @@ class ProjectStateCache:
         self.cache_file = Path(cache_file)
         self.cache_data: Optional[ProjectState] = None
         self.file_mtimes: Dict[str, float] = {}
+        self.sprint_status_mtime: float = 0.0
         self.smart_cache = smart_cache  # Optional SmartCache for story evidence caching
 
     def load(self) -> ProjectState:
@@ -278,11 +279,39 @@ class ProjectStateCache:
         if not self.cache_data:
             self.load()
             
+        if not self.cache_file.exists():
+            logger.info("Cache file missing on disk - bootstrapping...")
+            self.bootstrap(project_root)
+            return
+
+        # Check sprint-status.yaml for changes (Story 5.4 Fix)
+        sprint_status_path = os.path.join(project_root, "_bmad-output/implementation-artifacts/sprint-status.yaml")
+        if os.path.exists(sprint_status_path):
+            current_sprint_mtime = os.path.getmtime(sprint_status_path)
+            if current_sprint_mtime > self.sprint_status_mtime:
+                logger.info("sprint-status.yaml changed - triggering partial bootstrap for epics...")
+                self.sprint_status_mtime = current_sprint_mtime
+                # We need to re-parse project structure but keep existing story evidence if possible
+                from ..parsers.bmad_parser import BMADParser
+                parser = BMADParser(project_root)
+                project_model = parser.parse_project()
+                if project_model:
+                    # Update project metadata
+                    self.cache_data.project["phase"] = project_model.phase
+                    
+                    # Update Epics
+                    new_epics = {}
+                    for epic in project_model.epics:
+                        epic_key = f"epic-{epic.epic_id}" if not epic.epic_id.startswith("epic-") else epic.epic_id
+                        new_epics[epic_key] = epic
+                    self.cache_data.epics = new_epics
+                    updated = True
+            
         # If still no epics or stories after load, trigger bootstrap
         if not self.cache_data.epics or not self.cache_data.stories:
             logger.info("Cache empty or missing critical data during sync - bootstrapping...")
             self.bootstrap(project_root)
-            
+            return            
         from ..parsers.bmad_parser import BMADParser
         import re
         
@@ -359,6 +388,22 @@ class ProjectStateCache:
                              new_story.evidence[k] = v
 
                 self.cache_data.stories[new_story.story_id] = new_story
+                
+                # Store in SmartCache after re-parsing (Story 5.55 Fix)
+                if self.smart_cache:
+                    story_file_path = new_story.file_path or os.path.join(
+                        project_root,
+                        "_bmad-output/implementation-artifacts",
+                        f"{new_story.story_key}.md"
+                    )
+                    self.smart_cache.set_story_evidence(
+                        new_story.story_id, 
+                        story_file_path, 
+                        new_story.status, 
+                        new_story.evidence, 
+                        new_story.title
+                    )
+                
                 updated = True
         
         if updated:

@@ -700,9 +700,15 @@ def clear_cache():
     smart_cache = SmartCache(project_root)
     smart_cache.clear_project_cache()
     
+    # Also clear the project state cache to force a full re-bootstrap (Story 5.55 Fix)
+    state_cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
+    if os.path.exists(state_cache_file):
+        os.remove(state_cache_file)
+        logger.info(f"Deleted project-state.json for full refresh: {state_cache_file}")
+    
     logger.info(f"Cleared SmartCache for project: {project_root}")
     
-    return jsonify({"success": True, "message": "Cache cleared successfully"}), 200
+    return jsonify({"success": True, "message": "Cache cleared successfully. Next load will perform full bootstrap."}), 200
 
 
 @dashboard_bp.route('/api/cache/invalidate/<story_id>', methods=['POST'])

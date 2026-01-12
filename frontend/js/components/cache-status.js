@@ -16,13 +16,13 @@ export function render(cacheData, projectRoot) {
     }
 
     const { total_stories, status_counts, cache_age_ms, cache_file_exists } = cacheData;
-    
+
     // Format cache age
     const cacheAgeText = formatCacheAge(cache_age_ms);
-    
+
     // Calculate done stories count
     const doneCount = status_counts['done'] || 0;
-    
+
     return `
         <div class="cache-status bg-bmad-surface/50 border border-bmad-gray rounded-lg p-3 mb-4">
             <div class="flex items-center justify-between">
@@ -30,10 +30,10 @@ export function render(cacheData, projectRoot) {
                     <div class="flex items-center gap-2">
                         <span class="text-sm font-medium text-bmad-text">Cache</span>
                         <span class="text-xs text-bmad-muted">
-                            ${cache_file_exists ? 
-                                `<span class="text-green-500">●</span> ${doneCount} done stories cached` : 
-                                `<span class="text-gray-500">○</span> Not cached yet`
-                            }
+                            ${cache_file_exists ?
+            `<span class="text-bmad-green animate-pulse">●</span> ${doneCount} done stories cached` :
+            `<span class="text-bmad-muted">○</span> Not cached yet`
+        }
                         </span>
                     </div>
                     ${cache_file_exists ? `
@@ -61,12 +61,12 @@ export function render(cacheData, projectRoot) {
  */
 function formatCacheAge(ageMs) {
     if (!ageMs || ageMs === 0) return 'just now';
-    
+
     const seconds = Math.floor(ageMs / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
         return `${days} day${days > 1 ? 's' : ''} ago`;
     } else if (hours > 0) {
@@ -86,23 +86,23 @@ function formatCacheAge(ageMs) {
 export function attachListeners(projectRoot, onRefresh) {
     const clearBtn = document.getElementById('clear-cache-btn');
     if (!clearBtn) return;
-    
+
     clearBtn.addEventListener('click', async () => {
         if (!confirm('Are you sure you want to clear the cache? This will force all stories to be re-processed on the next load.')) {
             return;
         }
-        
+
         // Disable button and show loading state
         clearBtn.disabled = true;
         clearBtn.textContent = 'Clearing...';
-        
+
         try {
             const api = window.bmadApi;
             if (!api) {
                 throw new Error('API client not initialized');
             }
             await api.clearCache(projectRoot);
-            
+
             // Refresh dashboard
             if (onRefresh) {
                 await onRefresh();
