@@ -17,7 +17,7 @@ development_status:
   5-1-gemini-api-integration-streaming-chat: done
   5-2-project-aware-qa-suggested-prompts: done
   5-3-ai-agent-output-validation-workflow-gap-warnings: reviewed
-  5-4-evidence-based-task-progress-inference: done
+  5-4-evidence-based-task-progress-inference: reviewed
   epic-0: in-progress
   epic-0-retrospective: optional
   epic-1: in-progress
