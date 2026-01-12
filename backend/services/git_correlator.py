@@ -106,16 +106,19 @@ class GitCorrelator:
         patterns = [
             # Matches: "Story 1.3", "Story: 1.3", "Story-1.3", "Story 1-3"
             re.compile(rf'story[:\s\-_]*{flexible_id}', re.IGNORECASE),
-            
+
             # Matches: "[1.3]", "[1-3]"
             re.compile(rf'\[{flexible_id}\]', re.IGNORECASE),
-            
+
+            # Matches: "(1.3)", "(1-3)" - parentheses without prefix
+            re.compile(rf'\({flexible_id}\)', re.IGNORECASE),
+
             # Matches: "feat(story-1.3)", "fix(Story: 1.3)"
             re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\(story[:\s\-_]*{flexible_id}\)', re.IGNORECASE),
-            
+
             # Matches: "feat(1.3)", "fix(1-3)"
             re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\({flexible_id}\)', re.IGNORECASE),
-            
+
             # Helper for explicit "Ref: 1.3" or "Refs: 1.3"
             re.compile(rf'refs?[:\s\-_]*{flexible_id}', re.IGNORECASE),
         ]
