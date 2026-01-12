@@ -86,23 +86,23 @@ function getTimelineEvents(stories) {
         storyId: '0.0'
     });
 
-    // Sort events: Oldest first (Chronological)
+    // Sort events: Newest first (most recent at top)
     events.sort((a, b) => {
         const dateA = normalizeDate(a.date);
         const dateB = normalizeDate(b.date);
 
-        // Sort by Date Ascending (oldest first)
-        if (dateA < dateB) return -1;
-        if (dateA > dateB) return 1;
+        // Sort by Date Descending (newest first)
+        if (dateA > dateB) return -1;
+        if (dateA < dateB) return 1;
 
-        // If dates are equal, sort by Story ID Ascending (0.1 before 5.55)
+        // If dates are equal, sort by Story ID Descending (5.55 before 0.1)
         const partsA = (a.storyId || "0.0").split('.').map(Number);
         const partsB = (b.storyId || "0.0").split('.').map(Number);
 
         // Compare major version
-        if (partsA[0] !== partsB[0]) return partsA[0] - partsB[0];
+        if (partsA[0] !== partsB[0]) return partsB[0] - partsA[0];
         // Compare minor version
-        return (partsA[1] || 0) - (partsB[1] || 0);
+        return (partsB[1] || 0) - (partsA[1] || 0);
     });
 
     return events;

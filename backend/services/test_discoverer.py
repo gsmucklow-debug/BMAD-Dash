@@ -84,6 +84,8 @@ class TestDiscoverer:
             f"Story {normalized_id}",           # Story 2.3 (docstring)
             f"story-{epic}.{story}",            # story-2.3 (URL/slug style)
             f"story_{epic}_{story}",            # story_2_3 (underscore style)
+            f"'id': '{normalized_id}'",         # 'id': '2.3' (dict format)
+            f'"id": "{normalized_id}"',         # "id": "2.3" (dict format)
         ]
         
         for test_dir in test_dirs:
