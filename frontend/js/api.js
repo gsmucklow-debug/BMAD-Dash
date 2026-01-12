@@ -118,6 +118,68 @@ export class API {
     }
 
     /**
+     * Get SmartCache statistics
+     * Story 5.55: Smart Per-Project Cache Layer
+     * @param {string} projectRoot - Path to project root
+     * @returns {Promise<Object>} Cache statistics
+     */
+    async getCacheStats(projectRoot) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/cache/stats?project_root=${encodeURIComponent(projectRoot)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Get cache stats failed:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Clear all SmartCache data for project
+     * Story 5.55: Smart Per-Project Cache Layer
+     * @param {string} projectRoot - Path to project root
+     * @returns {Promise<Object>} Response with success status
+     */
+    async clearCache(projectRoot) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/cache/clear?project_root=${encodeURIComponent(projectRoot)}`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Clear cache failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Invalidate SmartCache for a specific story
+     * Story 5.55: Smart Per-Project Cache Layer
+     * @param {string} projectRoot - Path to project root
+     * @param {string} storyId - Story identifier (e.g., "5.4")
+     * @returns {Promise<Object>} Response with success status
+     */
+    async invalidateStoryCache(projectRoot, storyId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/cache/invalidate/${storyId}?project_root=${encodeURIComponent(projectRoot)}`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Invalidate story cache failed:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Checks AI chat service health
      * @returns {Promise<Object>} Health status
      */

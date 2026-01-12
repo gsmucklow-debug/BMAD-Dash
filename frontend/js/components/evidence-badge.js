@@ -137,14 +137,23 @@ function getGitBadgeColor(data) {
 }
 
 function getGitBadgeContent(data) {
-    if (!data || !data.commits) return `
+    if (!data || (!data.commits && data.count === undefined)) return `
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
         No Commits
     `;
 
-    const count = data.commits.length;
+    // Use 'count' field if available (cached data), otherwise use commits.length (live data)
+    const count = data.count !== undefined ? data.count : (data.commits ? data.commits.length : 0);
+
+    if (count === 0) return `
+        <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        No Commits
+    `;
+
     return `
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />

@@ -1,12 +1,14 @@
 /**
  * BMAD Dash - Dashboard View
  * Main dashboard view showing breadcrumb, quick glance, and Kanban board
+ * Story 5.55: Smart Per-Project Cache Layer
  */
 
 import { render as renderBreadcrumb } from '../components/breadcrumb.js';
 import { render as renderQuickGlance } from '../components/quick-glance.js';
 import { getBadgesSkeletonHTML, renderBadgesFromData } from '../components/evidence-badge.js';
 import { renderActionCard, attachActionCardListeners } from '../components/action-card.js';
+import { render as renderCacheStatus, attachListeners as attachCacheListeners } from '../components/cache-status.js';
 
 /**
  * Render the Dashboard View
@@ -33,6 +35,7 @@ export function render(data) {
     const projectRoot = data.project.root_path;
     container.innerHTML = `
         <div class="flex flex-col gap-6 h-full">
+            ${renderCacheStatus(data.smart_cache, projectRoot)}
             ${renderActionCard(data)}
             ${renderKanbanBoard(data.kanban, projectRoot)}
         </div>
@@ -40,6 +43,13 @@ export function render(data) {
 
     // Attach action card event listeners after rendering
     attachActionCardListeners(data);
+    
+    // Attach cache status event listeners - will trigger project reload
+    attachCacheListeners(projectRoot, async () => {
+        // Trigger project reload which will refresh dashboard
+        const loadButton = document.getElementById('load-project-btn');
+        if (loadButton) loadButton.click();
+    });
 
     // Initialize badges for all stories using pre-fetched evidence data
     allStories.forEach(story => {

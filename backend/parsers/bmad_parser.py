@@ -546,38 +546,33 @@ class BMADParser:
         try:
             # Import test discovery service
             from ..services.test_discoverer import TestDiscoverer
-            from ..utils.story_test_parser import StoryTestParser
-            
+            from ..utils.story_test_parser import parse_test_counts_from_story_file
+
             # Extract story ID from story path
             story_id = None
             match = re.search(r'(\d+)-(\d+)-', story_path)
             if match:
                 story_id = f"{match.group(1)}.{match.group(2)}"
-            
+
             if not story_id:
                 return False
-            
+
             # Discover test files for this story
             discoverer = TestDiscoverer(self.root_path)
             test_files = discoverer.discover_tests_for_story(story_id)
-            
+
             if not test_files:
                 # No test files found - this is a gap
                 return True
-            
+
             # Parse test results
-            parser = StoryTestParser()
             total_passing = 0
-            
-            for test_file in test_files:
-                try:
-                    test_data = parser.parse_test_file(test_file)
-                    if test_data:
-                        total_passing += test_data.get('passing', 0)
-                except Exception:
-                    # If we can't parse a test file, assume no passing tests
-                    continue
-            
+
+            # Use the function to parse test counts from story file
+            test_data = parse_test_counts_from_story_file(story_id, self.root_path)
+            if test_data:
+                total_passing = test_data.get('pass_count', 0)
+
             # Return True if 0 tests are passing
             return total_passing == 0
             

@@ -1,6 +1,7 @@
 """
 BMAD Dash - Dashboard API Endpoint
 GET /api/dashboard - Returns project overview with epics and stories
+Story 5.55: Smart Per-Project Cache Layer
 """
 from flask import Blueprint, jsonify, request
 import os
@@ -19,6 +20,7 @@ _cache = Cache()
 
 
 from ..services.project_state_cache import ProjectStateCache
+from ..services.smart_cache import SmartCache
 from ..models.project import Project
 import time
 
@@ -38,9 +40,12 @@ def get_dashboard():
     if not os.path.exists(project_root):
         raise FileNotFoundError(f"Project not found: {project_root}")
     
-    # Initialize cache service
+    # Initialize SmartCache for evidence caching (Story 5.55)
+    smart_cache = SmartCache(project_root)
+    
+    # Initialize cache service with SmartCache
     cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
-    state_cache = ProjectStateCache(cache_file)
+    state_cache = ProjectStateCache(cache_file, smart_cache=smart_cache)
     
     # Load state
     state = state_cache.load()
@@ -110,6 +115,11 @@ def get_dashboard():
             response["cache_age_ms"] = 0
     except OSError:
         response["cache_age_ms"] = 0
+    
+    # Add smart cache stats (Story 5.55)
+    cache_stats = state_cache.get_cache_stats()
+    if cache_stats:
+        response["smart_cache"] = cache_stats
     
     return jsonify(response), 200
 
@@ -639,4 +649,90 @@ def build_action_card(project) -> Dict[str, Any]:
         }
     
     return action_card
+
+
+@dashboard_bp.route('/api/cache/stats', methods=['GET'])
+@handle_api_errors
+def get_cache_stats():
+    """
+    Get SmartCache statistics for the project.
+    
+    Query params:
+        project_root: Path to the project root directory
+        
+    Returns:
+        JSON with cache statistics including total stories, status counts, cache age
+    """
+    project_root = request.args.get('project_root')
+    
+    if not project_root:
+        raise ValueError("project_root parameter is required")
+    
+    if not os.path.exists(project_root):
+        raise FileNotFoundError(f"Project not found: {project_root}")
+    
+    smart_cache = SmartCache(project_root)
+    stats = smart_cache.get_cache_stats()
+    
+    return jsonify(stats), 200
+
+
+@dashboard_bp.route('/api/cache/clear', methods=['POST'])
+@handle_api_errors
+def clear_cache():
+    """
+    Clear all SmartCache data for the project.
+    
+    Query params:
+        project_root: Path to the project root directory
+        
+    Returns:
+        JSON confirmation with success message
+    """
+    project_root = request.args.get('project_root')
+    
+    if not project_root:
+        raise ValueError("project_root parameter is required")
+    
+    if not os.path.exists(project_root):
+        raise FileNotFoundError(f"Project not found: {project_root}")
+    
+    smart_cache = SmartCache(project_root)
+    smart_cache.clear_project_cache()
+    
+    logger.info(f"Cleared SmartCache for project: {project_root}")
+    
+    return jsonify({"success": True, "message": "Cache cleared successfully"}), 200
+
+
+@dashboard_bp.route('/api/cache/invalidate/<story_id>', methods=['POST'])
+@handle_api_errors
+def invalidate_story_cache(story_id: str):
+    """
+    Invalidate SmartCache for a specific story.
+    Forces the story to be re-processed on next load.
+    
+    Query params:
+        project_root: Path to the project root directory
+        
+    Path params:
+        story_id: Story identifier to invalidate (e.g., "5.4")
+        
+    Returns:
+        JSON confirmation with success message
+    """
+    project_root = request.args.get('project_root')
+    
+    if not project_root:
+        raise ValueError("project_root parameter is required")
+    
+    if not os.path.exists(project_root):
+        raise FileNotFoundError(f"Project not found: {project_root}")
+    
+    smart_cache = SmartCache(project_root)
+    smart_cache.invalidate_story(story_id)
+    
+    logger.info(f"Invalidated SmartCache for story {story_id} in project: {project_root}")
+    
+    return jsonify({"success": True, "message": f"Cache invalidated for story {story_id}"}), 200
 

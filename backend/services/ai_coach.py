@@ -7,9 +7,15 @@ import google.generativeai as genai
 from typing import Generator, Dict, Any, Optional
 import json
 import os
+import logging
+import re
+from pathlib import Path
 from backend.services.bmad_version_detector import BMADVersionDetector
 from backend.services.validation_service import ValidationService
 from backend.services.project_state_cache import ProjectStateCache
+from backend.services.story_detail_fetcher import StoryDetailFetcher
+
+logger = logging.getLogger(__name__)
 
 
 class AICoach:
@@ -37,7 +43,10 @@ class AICoach:
         if project_root:
             cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
             self.project_state_cache = ProjectStateCache(cache_file)
-            
+
+        # Initialize StoryDetailFetcher for detailed story lookups
+        self.story_detail_fetcher = StoryDetailFetcher(project_root) if project_root else None
+
         self.project_root = project_root
     
     def _format_validation_summary(self, validation_result) -> str:
@@ -122,7 +131,6 @@ class AICoach:
             story_id = context.get('story_id') or context.get('story')
 
             # Try to extract story ID from message (e.g., "Story 5.3", "5.3")
-            import re
             story_match = re.search(r'\b(\d+)\.(\d+)\b', message)
             if story_match:
                 story_id = f"{story_match.group(1)}.{story_match.group(2)}"
@@ -130,6 +138,67 @@ class AICoach:
             return story_id
 
         return None
+
+    def _detect_story_query(self, message: str) -> Optional[str]:
+        """
+        Detect if user is asking about a specific story and extract story ID
+
+        Args:
+            message: User's question
+
+        Returns:
+            Story ID (e.g., "5.2") or None if no story query detected
+        """
+        # Pattern: "story 5.2", "Story 5.2", "5.2", etc.
+        story_match = re.search(r'(?:story\s+)?(\d+)\.(\d+)', message, re.IGNORECASE)
+        if story_match:
+            return f"{story_match.group(1)}.{story_match.group(2)}"
+        return None
+
+    def _inject_story_details(self, message: str, system_prompt: str) -> str:
+        """
+        Detect if user is asking about a story and inject full details into system prompt
+
+        Args:
+            message: User's question
+            system_prompt: Current system prompt
+
+        Returns:
+            Enhanced system prompt with story details
+        """
+        if not self.story_detail_fetcher:
+            return system_prompt
+
+        story_id = self._detect_story_query(message)
+        if not story_id:
+            return system_prompt
+
+        # Fetch detailed story information
+        story_details = self.story_detail_fetcher.get_story_details(story_id)
+        if not story_details:
+            return system_prompt
+
+        # Format story details for injection
+        details_section = f"\n\nREQUESTED STORY DETAILS (Story {story_id}):\n"
+        details_section += f"Title: {story_details['title']}\n"
+        details_section += f"Status: {story_details['status']}\n"
+        details_section += f"Progress: {story_details['completed_tasks']}/{story_details['total_tasks']} tasks complete\n"
+
+        if story_details['summary']:
+            details_section += f"\nUser Story:\n{story_details['summary']}\n"
+
+        if story_details['acceptance_criteria']:
+            details_section += f"\nAcceptance Criteria:\n"
+            for ac in story_details['acceptance_criteria']:
+                details_section += f"  - {ac}\n"
+
+        if story_details['tasks']:
+            details_section += f"\nTasks:\n"
+            for task in story_details['tasks']:
+                status_icon = "✓" if task['status'] == 'done' else "○"
+                details_section += f"  {status_icon} {task['title']} [{task['status']}]\n"
+
+        return system_prompt + details_section
 
     def _build_system_prompt(self, context: Dict[str, Any]) -> str:
         """
@@ -324,7 +393,10 @@ Remember: You have access to the current project state, so reference it in your 
                 context['validation_summary'] = validation_summary
 
             system_prompt = self._build_system_prompt(context)
-            
+
+            # Inject story details if user is asking about a specific story
+            system_prompt = self._inject_story_details(message, system_prompt)
+
             # Combine system prompt with user message
             full_prompt = f"{system_prompt}\n\nUser: {message}"
             
@@ -354,24 +426,28 @@ Remember: You have access to the current project state, so reference it in your 
     def get_response(self, message: str, context: Dict[str, Any]) -> str:
         """
         Gets non-streaming AI response (for backward compatibility)
-        
+
         Args:
             message: User's question or prompt
             context: Dictionary containing project context (phase, epic, story, task)
-            
+
         Returns:
             Complete AI response as string
         """
         if not self.api_key or self.api_key == 'your-api-key-here':
             raise ValueError("GEMINI_API_KEY is not configured. Please set it in .env file")
-        
+
         try:
             system_prompt = self._build_system_prompt(context)
+
+            # Inject story details if user is asking about a specific story
+            system_prompt = self._inject_story_details(message, system_prompt)
+
             full_prompt = f"{system_prompt}\n\nUser: {message}"
-            
+
             response = self.model.generate_content(full_prompt)
             return response.text
-            
+
         except Exception as e:
             # Handle any errors (google.generativeai may not have APIError class)
             return f"Error: {str(e)}"

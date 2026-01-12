@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 from ..models.project_state import ProjectState
 from ..models.story import Story
+from .smart_cache import SmartCache
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +15,11 @@ class ProjectStateCache:
     Service for managing the project state cache (project-state.json).
     Handles loading, saving, and updating the state.
     """
-    def __init__(self, cache_file: str):
+    def __init__(self, cache_file: str, smart_cache: Optional[SmartCache] = None):
         self.cache_file = Path(cache_file)
         self.cache_data: Optional[ProjectState] = None
         self.file_mtimes: Dict[str, float] = {}
+        self.smart_cache = smart_cache  # Optional SmartCache for story evidence caching
 
     def load(self) -> ProjectState:
         """
@@ -90,11 +92,51 @@ class ProjectStateCache:
         
         # Save changes
         self.save()
+        
+        # Invalidate SmartCache entry if story was updated
+        if self.smart_cache:
+            self.smart_cache.invalidate_story(story_id)
+    
+    def invalidate_story_cache(self, story_id: str):
+        """
+        Invalidate the SmartCache entry for a specific story.
+        Forces the story to be re-processed on next load.
+        
+        Args:
+            story_id: Story identifier to invalidate
+        """
+        if self.smart_cache:
+            self.smart_cache.invalidate_story(story_id)
+            logger.info(f"Invalidated SmartCache for story {story_id}")
+    
+    def clear_smart_cache(self):
+        """Clear all SmartCache data for this project."""
+        if self.smart_cache:
+            self.smart_cache.clear_project_cache()
+            logger.info("Cleared all SmartCache data")
+    
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """
+        Get statistics about the SmartCache.
+        
+        Returns:
+            Dictionary with cache statistics, or None if SmartCache not configured
+        """
+        if self.smart_cache:
+            return self.smart_cache.get_cache_stats()
+        return None
 
-    def bootstrap(self, project_root: str) -> ProjectState:
+    def bootstrap(self, project_root: str, use_smart_cache: bool = True) -> ProjectState:
         """
         Bootstrap the project state by scanning all files and collecting evidence.
         This is a heavy operation used when cache is missing or explicitly requested.
+        
+        Args:
+            project_root: Path to the project root directory
+            use_smart_cache: Whether to use SmartCache for done stories (default: True)
+            
+        Returns:
+            ProjectState with all stories and their evidence
         """
         logger.info("Bootstrapping project state...")
         
@@ -118,50 +160,95 @@ class ProjectStateCache:
                 for story in epic.stories:
                     stories[story.story_id] = story
         
-        # Initialize evidence collectors
-        git_correlator = GitCorrelator(project_root)
-        test_discoverer = TestDiscoverer(project_root)
+        # Initialize SmartCache if enabled and not already set
+        smart_cache = self.smart_cache
+        if use_smart_cache and not smart_cache:
+            smart_cache = SmartCache(project_root)
+        
+        # Initialize evidence collectors (lazy-loaded as needed)
+        git_correlator = None
+        test_discoverer = None
         
         total_stories = len(stories)
+        cache_hits = 0
+        cache_misses = 0
+        
         logger.info(f"Collecting evidence for {total_stories} stories...")
         
         for story_id, story in stories.items():
-            # Get Git Evidence and Infer Tasks
-            try:
-                commits = git_correlator.get_commits_for_story(story_id)
-                if commits:
-                    story.evidence["commits"] = len(commits)
-                    # get max timestamp
-                    last_commit = max(c.timestamp for c in commits) 
-                    story.evidence["last_commit"] = last_commit.isoformat()
-                    
-                    # Infer task progress (Task 6)
-                    # Iterate commits to find task completion evidence
-                    for commit in commits:
-                        completed_task_nums = git_correlator.extract_task_references(commit.message)
-                        for task_num in completed_task_nums:
-                            # Find task (assuming ID matches number string)
-                            # Task IDs are usually "1", "2" etc.
-                            task_str_id = str(task_num)
-                            for task in story.tasks:
-                                if task.task_id == task_str_id and task.status != "done":
-                                    task.status = "done"
-                                    task.inferred = True
-                                    logger.info(f"Inferred task {task_str_id} done for story {story_id} from commit")
-            except Exception as e:
-                logger.warning(f"Git evidence collection failed for {story_id}: {e}")
+            story_file_path = story.file_path or os.path.join(
+                project_root,
+                "_bmad-output/implementation-artifacts",
+                f"{story.story_key}.md"
+            )
+            
+            # Check SmartCache for done stories (skip expensive git/test work)
+            use_cache = False
+            if use_smart_cache and smart_cache and story.status == "done":
+                cached_evidence, cache_hit = smart_cache.get_story_evidence(
+                    story_id, story_file_path, story.status
+                )
+                if cache_hit:
+                    story.evidence = cached_evidence
+                    cache_hits += 1
+                    use_cache = True
+                    logger.debug(f"Cache HIT for done story {story_id}")
+                else:
+                    cache_misses += 1
+                    logger.debug(f"Cache MISS for done story {story_id}")
+            else:
+                # Active stories always refresh
+                cache_misses += 1
+            
+            if not use_cache:
+                # Lazy-load evidence collectors only when needed
+                if not git_correlator:
+                    git_correlator = GitCorrelator(project_root)
+                if not test_discoverer:
+                    test_discoverer = TestDiscoverer(project_root)
                 
-            # Get Test Evidence
-            try:
-                test_ev = test_discoverer.get_test_evidence_for_story(story_id, project_root)
-                if test_ev:
-                    story.evidence["tests_passed"] = test_ev.pass_count
-                    story.evidence["tests_total"] = test_ev.pass_count + test_ev.fail_count
-                    story.evidence["healthy"] = (test_ev.fail_count == 0) and (test_ev.pass_count > 0)
-                    if test_ev.last_run_time:
-                         story.evidence["last_test_run"] = test_ev.last_run_time.isoformat()
-            except Exception as e:
-                logger.warning(f"Test evidence collection failed for {story_id}: {e}")
+                # Get Git Evidence and Infer Tasks
+                try:
+                    commits = git_correlator.get_commits_for_story(story_id)
+                    if commits:
+                        story.evidence["commits"] = len(commits)
+                        # get max timestamp
+                        last_commit = max(c.timestamp for c in commits)
+                        story.evidence["last_commit"] = last_commit.isoformat()
+                        
+                        # Infer task progress (Task 6)
+                        # Iterate commits to find task completion evidence
+                        for commit in commits:
+                            completed_task_nums = git_correlator.extract_task_references(commit.message)
+                            for task_num in completed_task_nums:
+                                # Find task (assuming ID matches number string)
+                                # Task IDs are usually "1", "2" etc.
+                                task_str_id = str(task_num)
+                                for task in story.tasks:
+                                    if task.task_id == task_str_id and task.status != "done":
+                                        task.status = "done"
+                                        task.inferred = True
+                                        logger.info(f"Inferred task {task_str_id} done for story {story_id} from commit")
+                except Exception as e:
+                    logger.warning(f"Git evidence collection failed for {story_id}: {e}")
+                    
+                # Get Test Evidence
+                try:
+                    test_ev = test_discoverer.get_test_evidence_for_story(story_id, project_root)
+                    if test_ev:
+                        story.evidence["tests_passed"] = test_ev.pass_count
+                        story.evidence["tests_total"] = test_ev.pass_count + test_ev.fail_count
+                        story.evidence["healthy"] = (test_ev.fail_count == 0) and (test_ev.pass_count > 0)
+                        if test_ev.last_run_time:
+                             story.evidence["last_test_run"] = test_ev.last_run_time.isoformat()
+                except Exception as e:
+                    logger.warning(f"Test evidence collection failed for {story_id}: {e}")
+                
+                # Store in SmartCache after collecting evidence
+                if use_smart_cache and smart_cache:
+                    smart_cache.set_story_evidence(
+                        story_id, story_file_path, story.status, story.evidence, story.title
+                    )
                 
         # Create State
         # Infer current story? For now leaving empty or simple
@@ -180,7 +267,7 @@ class ProjectStateCache:
         
         self.cache_data = state
         self.save()
-        logger.info("Bootstrap complete.")
+        logger.info(f"Bootstrap complete. Cache hits: {cache_hits}, Cache misses: {cache_misses}")
         return state
 
     def sync(self, project_root: str):
