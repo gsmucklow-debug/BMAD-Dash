@@ -19,7 +19,34 @@ export function getBadgesSkeletonHTML() {
 }
 
 /**
- * Update the badges container with actual data
+ * Render badges from pre-fetched evidence data (no network calls)
+ * @param {string} containerId - ID of the container element
+ * @param {Object} evidenceData - Pre-fetched evidence data from dashboard
+ * @param {string} storyId - Story ID
+ * @param {string} projectRoot - Project root path
+ */
+export function renderBadgesFromData(containerId, evidenceData, storyId, projectRoot) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Parse evidence data from cache
+    const gitData = evidenceData.commits !== undefined ? {
+        status: evidenceData.commits > 0 ? 'green' : 'red',
+        commits: [{ message: 'cached' }], // Minimal data for display
+        count: evidenceData.commits
+    } : null;
+
+    const testData = evidenceData.tests_passed !== undefined ? {
+        status: (evidenceData.tests_total > 0 && evidenceData.healthy) ? 'green' : 'yellow',
+        pass_count: evidenceData.tests_passed || 0,
+        total_tests: evidenceData.tests_total || 0
+    } : null;
+
+    renderBadges(container, gitData, testData, null, storyId, projectRoot);
+}
+
+/**
+ * Update the badges container with actual data (legacy - kept for backward compatibility)
  * @param {string} containerId - ID of the container element
  * @param {string} storyId - Story ID
  * @param {string} projectRoot - Project root path

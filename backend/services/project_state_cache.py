@@ -191,6 +191,11 @@ class ProjectStateCache:
         if not self.cache_data:
             self.load()
             
+        # If still no epics or stories after load, trigger bootstrap
+        if not self.cache_data.epics or not self.cache_data.stories:
+            logger.info("Cache empty or missing critical data during sync - bootstrapping...")
+            self.bootstrap(project_root)
+            
         from ..parsers.bmad_parser import BMADParser
         import re
         
@@ -198,6 +203,7 @@ class ProjectStateCache:
         story_files = parser.find_all_story_files()
         
         updated = False
+        git_correlator = None
         
         for file_path in story_files:
             try:
@@ -232,8 +238,10 @@ class ProjectStateCache:
                 # Re-run evidence collection and inference for the changed story
                 # We do this because file changes might invalidate previous inference 
                 # or we might want new evidence status
-                from ..services.git_correlator import GitCorrelator
-                git_correlator = GitCorrelator(project_root) # Optimized init
+                # Lazy load collectors only if needed
+                if not git_correlator:
+                    from ..services.git_correlator import GitCorrelator
+                    git_correlator = GitCorrelator(project_root)
                 
                 try:
                     commits = git_correlator.get_commits_for_story(story_id)
@@ -268,4 +276,38 @@ class ProjectStateCache:
         
         if updated:
             self.save()
+
+    def summarize_for_ai(self) -> str:
+        """
+        Generate a concise summary of project state for AI context.
+        Focuses on current status without overwhelming details.
+
+        Returns:
+            Formatted string with project phase, epics, and story statuses
+        """
+        if not self.cache_data:
+            return "No project state available."
+
+        lines = []
+        lines.append(f"Project: {self.cache_data.project.get('name', 'Unknown')}")
+        lines.append(f"Phase: {self.cache_data.project.get('phase', 'Unknown')}")
+
+        # Summarize epics
+        lines.append("\nEpics:")
+        for epic_id, epic in self.cache_data.epics.items():
+            lines.append(f"  - {epic_id}: {epic.title} (Status: {epic.status})")
+
+        # Summarize stories (grouped by status)
+        lines.append("\nStories by Status:")
+        status_groups = {}
+        for story_id, story in self.cache_data.stories.items():
+            status = story.status
+            if status not in status_groups:
+                status_groups[status] = []
+            status_groups[status].append(story_id)
+
+        for status, story_ids in sorted(status_groups.items()):
+            lines.append(f"  {status}: {', '.join(sorted(story_ids))}")
+
+        return "\n".join(lines)
 

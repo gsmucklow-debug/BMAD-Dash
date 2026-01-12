@@ -276,6 +276,7 @@ export class AIChat {
      * @param {Object} context - Project context (phase, epic, story, task)
      */
     setProjectContext(context) {
+        console.log('AIChat context updated:', context);
         this.projectContext = context;
     }
 

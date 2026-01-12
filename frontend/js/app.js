@@ -49,6 +49,7 @@ async function init() {
         // Initialize AI Chat once (persists across views)
         if (!aiChatInstance) {
             aiChatInstance = new AIChat('ai-chat-container');
+            window.aiCoach = aiChatInstance; // For validation/testing
         }
 
         // Update AI chat with project context (Story 5.2: Enhanced context)
@@ -96,7 +97,10 @@ async function init() {
                 })),
 
                 // Acceptance criteria summary
-                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || [],
+
+                // Story 5.5: Add project_root for AI context loading
+                project_root: projectRoot
             });
 
             // Update suggested prompts with new context
@@ -248,7 +252,10 @@ async function loadProject(projectRoot) {
                 currentTask: taskLayer.title || 'No active task',
                 currentTaskStatus: taskLayer.status || 'unknown',
                 tasks: tasks.map(t => ({ id: t.task_id || t.id, title: t.title, status: t.status })),
-                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || [],
+
+                // Story 5.5: Add project_root for AI context loading
+                project_root: projectRoot
             });
             aiChatInstance.updateSuggestedPrompts();
         }
@@ -337,7 +344,10 @@ async function handleRefresh() {
                 currentTask: taskLayer.title || 'No active task',
                 currentTaskStatus: taskLayer.status || 'unknown',
                 tasks: tasks.map(t => ({ id: t.task_id || t.id, title: t.title, status: t.status })),
-                acceptanceCriteria: storyLayer.acceptance_criteria_summary || []
+                acceptanceCriteria: storyLayer.acceptance_criteria_summary || [],
+
+                // Story 5.5: Add project_root for AI context loading
+                project_root: projectRoot
             });
             aiChatInstance.updateSuggestedPrompts();
         }

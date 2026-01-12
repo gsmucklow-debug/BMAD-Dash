@@ -4,7 +4,7 @@
  * with progress indicators for the current story
  */
 
-import { getBadgesSkeletonHTML, updateBadges } from './evidence-badge.js';
+import { getBadgesSkeletonHTML, renderBadgesFromData } from './evidence-badge.js';
 
 // Constants
 const CONTAINER_ID = 'quick-glance-container';
@@ -14,6 +14,7 @@ const CONTAINER_ID = 'quick-glance-container';
  * @param {Object} data - Dashboard data from API
  * @param {Object} data.quick_glance - Quick glance data with done, current, next
  * @param {Object} data.project - Project metadata (optional)
+ * @param {Object} data.kanban - Kanban data with full story objects including evidence
  */
 export function render(data) {
     const container = document.getElementById(CONTAINER_ID);
@@ -26,6 +27,14 @@ export function render(data) {
     // Safely destructure with defaults
     const { done = null, current = null, next = null } = data.quick_glance || {};
 
+    // Extract evidence data from kanban stories
+    const allStories = [];
+    if (data.kanban) {
+        Object.values(data.kanban).forEach(list => allStories.push(...list));
+    }
+    const currentStory = allStories.find(s => s.story_id === current?.story_id);
+    const doneStory = allStories.find(s => s.story_id === done?.story_id);
+
     // Build HTML structure (show all sections even if current is null)
     const quickGlanceHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-bmad-gray/50 p-4 rounded-lg border border-bmad-gray">
@@ -37,14 +46,24 @@ export function render(data) {
 
     container.innerHTML = quickGlanceHTML;
 
-    // Initialize badges for current story if available and project root exists
-    if (current && current.story_id && data.project && data.project.root_path) {
-        updateBadges('evidence-badges-container', current.story_id, data.project.root_path);
+    // Initialize badges for current story using pre-fetched evidence data
+    if (currentStory && data.project && data.project.root_path) {
+        renderBadgesFromData(
+            'evidence-badges-container',
+            currentStory.evidence || {},
+            currentStory.story_id,
+            data.project.root_path
+        );
     }
 
-    // Initialize badges for done story if available and project root exists
-    if (done && done.story_id && data.project && data.project.root_path) {
-        updateBadges('evidence-badges-done', done.story_id, data.project.root_path);
+    // Initialize badges for done story using pre-fetched evidence data
+    if (doneStory && data.project && data.project.root_path) {
+        renderBadgesFromData(
+            'evidence-badges-done',
+            doneStory.evidence || {},
+            doneStory.story_id,
+            data.project.root_path
+        );
     }
 }
 

@@ -136,29 +136,52 @@ class AICoach:
         Constructs the system prompt with BMAD context and full Project State
 
         Args:
-            context: Dictionary containing project context 
+            context: Dictionary containing project context
 
         Returns:
             System prompt string
         """
         # Load full project state if available (Story 5.4)
         project_state_context = ""
-        if self.project_state_cache and self.project_root:
+        current_root = context.get('project_root')
+        
+        # Determine effective project root: context > self.project_root
+        effective_root = current_root if current_root else self.project_root
+        
+        # Lazily initialize or re-initialize cache if root changes or is missing
+        if effective_root:
+            normalized_effective = str(Path(effective_root).resolve())
+            current_cache_root = ""
+            if self.project_state_cache:
+                current_cache_root = str(self.project_state_cache.cache_file.parent.parent.parent.resolve())
+            
+            if not self.project_state_cache or normalized_effective != current_cache_root:
+                try:
+                   cache_dir = os.path.join(effective_root, "_bmad-output", "implementation-artifacts")
+                   cache_file = os.path.join(cache_dir, "project-state.json")
+                   logger.info(f"AI Coach initializing ProjectStateCache for root: {effective_root}")
+                   self.project_state_cache = ProjectStateCache(cache_file)
+                except Exception as ex:
+                   logger.error(f"AI Coach failed to init cache for {effective_root}: {ex}")
+
+        if self.project_state_cache and effective_root:
             try:
+                # Ensure data is loaded from file first
+                if self.project_state_cache.cache_data is None:
+                    self.project_state_cache.load()
+
                 # Sync to ensure we satisfy "all epics, all stories" requirement
-                self.project_state_cache.sync(self.project_root)
+                self.project_state_cache.sync(effective_root)
                 state = self.project_state_cache.cache_data
                 if state:
-                    state_dict = state.to_dict()
-                    # Convert to JSON string for prompt
-                    project_state_json = json.dumps(state_dict, indent=2)
-                    project_state_context = f"\n\nFULL PROJECT STATE (Source of Truth):\n```json\n{project_state_json}\n```"
+                    project_state_context = f"\n\nPROJECT STATE SUMMARY:\n{self.project_state_cache.summarize_for_ai()}"
+                    logger.info(f"AI Coach injected summary size: {len(project_state_context)} chars")
             except Exception as e:
-                # Fallback to limited context if cache fails
+                logger.error(f"AI Coach failed to load project state: {e}")
                 project_state_context = f"\n\nProject State Error: {str(e)}"
 
-        phase = context.get('phase', 'Unknown')
-        epic_id = context.get('epic_id', context.get('epic', 'Unknown'))
+        phase = context.get('phase', context.get('Phase', 'Unknown'))
+        epic_id = context.get('epicId', context.get('epic_id', context.get('epic', 'Unknown')))
         # ... (rest of simple context extraction for fallback/immediate context) ...
         epic_title = context.get('epic_title', '')
         story_id = context.get('story_id', context.get('story', 'Unknown'))

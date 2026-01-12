@@ -5,7 +5,7 @@
 
 import { render as renderBreadcrumb } from '../components/breadcrumb.js';
 import { render as renderQuickGlance } from '../components/quick-glance.js';
-import { getBadgesSkeletonHTML, updateBadges } from '../components/evidence-badge.js';
+import { getBadgesSkeletonHTML, renderBadgesFromData } from '../components/evidence-badge.js';
 import { renderActionCard, attachActionCardListeners } from '../components/action-card.js';
 
 /**
@@ -41,12 +41,17 @@ export function render(data) {
     // Attach action card event listeners after rendering
     attachActionCardListeners(data);
 
-    // Initialize badges for all stories
+    // Initialize badges for all stories using pre-fetched evidence data
     allStories.forEach(story => {
         // Update Board Card badge
         const boardBadgeId = `board-badges-${story.id}`;
         if (document.getElementById(boardBadgeId)) {
-            updateBadges(boardBadgeId, story.id, projectRoot);
+            renderBadgesFromData(
+                boardBadgeId,
+                story.evidence || {},
+                story.id,
+                projectRoot
+            );
         }
     });
 }

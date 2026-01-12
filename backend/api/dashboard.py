@@ -455,7 +455,8 @@ def build_kanban(project) -> Dict[str, List[Dict[str, Any]]]:
                 "epic": story.epic,
                 "status": story.status,
                 "last_updated": story.last_updated if hasattr(story, 'last_updated') else None,
-                "tasks": [task.to_dict() for task in story.tasks]
+                "tasks": [task.to_dict() for task in story.tasks],
+                "evidence": story.evidence if hasattr(story, 'evidence') else {}
             }
             
             # Add completed date for done stories

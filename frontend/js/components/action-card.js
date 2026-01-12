@@ -118,16 +118,32 @@ export function attachActionCardListeners(data) {
         return;
     }
 
-    // Initialize evidence badges for current story
+    // Initialize evidence badges for current story using pre-fetched evidence data
     const storyLayer = data.action_card.story_layer;
     if (storyLayer && storyLayer.story_id && data.project && data.project.root_path) {
         const badgeContainerId = `action-card-badges-${storyLayer.story_id}`;
         const badgeContainer = document.getElementById(badgeContainerId);
         if (badgeContainer) {
+            // Find story in kanban data to get evidence
+            let storyData = null;
+            if (data.kanban) {
+                for (const column of Object.values(data.kanban)) {
+                    const found = column.find(s => s.id === storyLayer.story_id || s.story_id === storyLayer.story_id);
+                    if (found) {
+                        storyData = found;
+                        break;
+                    }
+                }
+            }
+
             // Dynamically import and use evidence badge module
             import('../components/evidence-badge.js').then(module => {
-                badgeContainer.innerHTML = module.getBadgesSkeletonHTML();
-                module.updateBadges(badgeContainerId, storyLayer.story_id, data.project.root_path);
+                module.renderBadgesFromData(
+                    badgeContainerId,
+                    storyData?.evidence || {},
+                    storyLayer.story_id,
+                    data.project.root_path
+                );
             }).catch(error => {
                 console.error('Failed to load evidence badges:', error);
             });

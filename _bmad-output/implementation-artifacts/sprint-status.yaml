@@ -16,20 +16,22 @@ development_status:
   4-2-workflow-history-gap-detection: done
   5-1-gemini-api-integration-streaming-chat: done
   5-2-project-aware-qa-suggested-prompts: done
-  5-3-ai-agent-output-validation-workflow-gap-warnings: reviewed
-  5-4-evidence-based-task-progress-inference: reviewed
+  5-3-ai-agent-output-validation-workflow-gap-warnings: done
+  5-4-evidence-based-task-progress-inference: done
+  5-5-critical-fix-ai-context-cache: done
+  5-6-automated-bmad-documentation-sync: todo
   epic-0: in-progress
-  epic-0-retrospective: optional
+  epic-0-retrospective: done
   epic-1: in-progress
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
   epic-2: in-progress
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
   epic-3: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
   epic-4: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
   epic-5: in-progress
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 generated: 2026-01-09
 project: BMAD Dash
 project_key: bmad-dash
