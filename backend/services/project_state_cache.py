@@ -187,7 +187,7 @@ class ProjectStateCache:
             use_cache = False
             if use_smart_cache and smart_cache and story.status == "done":
                 cached_evidence, cache_hit = smart_cache.get_story_evidence(
-                    story_id, story_file_path, story.status
+                    story_id, story_file_path
                 )
                 if cache_hit:
                     story.evidence = cached_evidence
@@ -202,6 +202,18 @@ class ProjectStateCache:
                 cache_misses += 1
             
             if not use_cache:
+                # Initialize default evidence structure to prevent frontend partial-failure crashes (Fix #5)
+                story.evidence = {
+                    "commits": [],
+                    "commit_count": 0,
+                    "status": "unknown",
+                    "tests_passed": 0,
+                    "tests_total": 0,
+                    "healthy": False,
+                    "failing_tests": [],
+                    "test_files": []
+                }
+
                 # Lazy-load evidence collectors only when needed
                 if not git_correlator:
                     git_correlator = GitCorrelator(project_root)
@@ -212,18 +224,20 @@ class ProjectStateCache:
                 try:
                     commits = git_correlator.get_commits_for_story(story_id)
                     if commits:
-                        story.evidence["commits"] = len(commits)
-                        # get max timestamp
+                        # Store rich evidence for instant frontend display
+                        story.evidence["commits"] = [c.to_dict() for c in commits]
+                        story.evidence["commit_count"] = len(commits)
                         last_commit = max(c.timestamp for c in commits)
                         story.evidence["last_commit"] = last_commit.isoformat()
                         
+                        # Calculate status based on recency
+                        status, _ = git_correlator.calculate_status(commits)
+                        story.evidence["status"] = status
+                        
                         # Infer task progress (Task 6)
-                        # Iterate commits to find task completion evidence
                         for commit in commits:
                             completed_task_nums = git_correlator.extract_task_references(commit.message)
                             for task_num in completed_task_nums:
-                                # Find task (assuming ID matches number string)
-                                # Task IDs are usually "1", "2" etc.
                                 task_str_id = str(task_num)
                                 for task in story.tasks:
                                     if task.task_id == task_str_id and task.status != "done":
@@ -240,6 +254,8 @@ class ProjectStateCache:
                         story.evidence["tests_passed"] = test_ev.pass_count
                         story.evidence["tests_total"] = test_ev.pass_count + test_ev.fail_count
                         story.evidence["healthy"] = (test_ev.fail_count == 0) and (test_ev.pass_count > 0)
+                        story.evidence["failing_tests"] = test_ev.failing_test_names
+                        story.evidence["test_files"] = test_ev.test_files
                         if test_ev.last_run_time:
                              story.evidence["last_test_run"] = test_ev.last_run_time.isoformat()
                 except Exception as e:
@@ -362,10 +378,14 @@ class ProjectStateCache:
                 try:
                     commits = git_correlator.get_commits_for_story(story_id)
                     if commits:
-                        new_story.evidence = new_story.evidence or {} # Ensure dict
-                        new_story.evidence["commits"] = len(commits)
+                        new_story.evidence = new_story.evidence or {}
+                        new_story.evidence["commits"] = [c.to_dict() for c in commits]
+                        new_story.evidence["commit_count"] = len(commits)
                         last_commit = max(c.timestamp for c in commits) 
                         new_story.evidence["last_commit"] = last_commit.isoformat()
+                        
+                        status, _ = git_correlator.calculate_status(commits)
+                        new_story.evidence["status"] = status
                         
                         # Infer task progress
                         for commit in commits:
@@ -413,9 +433,10 @@ class ProjectStateCache:
         """
         Generate a concise summary of project state for AI context.
         Focuses on current status without overwhelming details.
+        Includes git status and evidence gaps for context awareness.
 
         Returns:
-            Formatted string with project phase, epics, and story statuses
+            Formatted string with project phase, epics, story statuses, git status, and evidence
         """
         if not self.cache_data:
             return "No project state available."
@@ -429,6 +450,32 @@ class ProjectStateCache:
         for epic_id, epic in self.cache_data.epics.items():
             lines.append(f"  - {epic_id}: {epic.title} (Status: {epic.status})")
 
+        # Identify current story
+        lines.append("\nCurrent Story:")
+        in_progress_stories = [s for s in self.cache_data.stories.values() if s.status in ["in-progress", "review"]]
+
+        if in_progress_stories:
+            current = in_progress_stories[0]
+            lines.append(f"  - Story {current.story_id}: {current.title} (Status: {current.status})")
+        else:
+            # Check for recently completed stories that need committing
+            done_stories = [(sid, s) for sid, s in self.cache_data.stories.items() if s.status == "done"]
+            done_stories.sort(key=lambda x: self._parse_story_id_for_sort(x[0]), reverse=True)
+
+            if done_stories:
+                recent_done_id, recent_done = done_stories[0]
+                evidence = recent_done.evidence if hasattr(recent_done, 'evidence') else {}
+                commit_count = evidence.get('commit_count', 0) if evidence else 0
+
+                if commit_count == 0:
+                    lines.append(f"  - Story {recent_done_id}: {recent_done.title} (Status: done)")
+                    lines.append(f"    WARNING: This story is marked done but has NO COMMITS. It needs to be committed!")
+                else:
+                    lines.append(f"  - No active in-progress story")
+                    lines.append(f"  - Most recent: Story {recent_done_id} (done, {commit_count} commits)")
+            else:
+                lines.append(f"  - No stories found")
+
         # Summarize stories (grouped by status)
         lines.append("\nStories by Status:")
         status_groups = {}
@@ -441,5 +488,66 @@ class ProjectStateCache:
         for status, story_ids in sorted(status_groups.items()):
             lines.append(f"  {status}: {', '.join(sorted(story_ids))}")
 
+        # Add git status information
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['git', 'status', '--short'],
+                cwd=self.cache_file.parent.parent.parent,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                git_lines = result.stdout.strip().split('\n')
+                modified = sum(1 for line in git_lines if line.startswith(' M') or line.startswith('M'))
+                untracked = sum(1 for line in git_lines if line.startswith('??'))
+                lines.append(f"\nGit Status:")
+                lines.append(f"  - Uncommitted changes: {modified} modified, {untracked} untracked files")
+                lines.append(f"  - IMPORTANT: Story changes need to be committed to git")
+        except Exception as e:
+            logger.debug(f"Could not fetch git status: {e}")
+
+        # Add evidence summary for recent "done" stories
+        lines.append("\nRecent Done Stories Evidence:")
+        done_stories = [(sid, s) for sid, s in self.cache_data.stories.items() if s.status == "done"]
+        # Sort by story_id descending (most recent first)
+        done_stories.sort(key=lambda x: self._parse_story_id_for_sort(x[0]), reverse=True)
+
+        for story_id, story in done_stories[:5]:  # Show last 5 done stories
+            evidence = story.evidence if hasattr(story, 'evidence') else {}
+            commit_count = evidence.get('commit_count', 0) if evidence else 0
+            test_total = evidence.get('tests_total', 0) if evidence else 0
+            has_commits = commit_count > 0
+            has_tests = test_total > 0
+
+            evidence_status = []
+            if not has_commits:
+                evidence_status.append("NO COMMITS")
+            else:
+                evidence_status.append(f"{commit_count} commits")
+
+            if not has_tests:
+                evidence_status.append("NO TESTS")
+            else:
+                evidence_status.append(f"{test_total} tests")
+
+            lines.append(f"  - Story {story_id}: {', '.join(evidence_status)}")
+
         return "\n".join(lines)
+
+    def _parse_story_id_for_sort(self, story_id: str) -> tuple:
+        """Parse story ID for semantic versioning sort (5.5 < 5.55 < 5.6 < 5.7)"""
+        try:
+            parts = story_id.split('.')
+            major = int(parts[0]) if len(parts) > 0 else 0
+            if len(parts) > 1:
+                minor_str = parts[1]
+                # Pad single-digit minors: "5" -> 50, "55" -> 55
+                minor = int(minor_str) * 10 if len(minor_str) == 1 else int(minor_str)
+            else:
+                minor = 0
+            return (major, minor)
+        except (ValueError, AttributeError):
+            return (0, 0)
 

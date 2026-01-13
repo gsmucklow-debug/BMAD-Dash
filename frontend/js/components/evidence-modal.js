@@ -72,12 +72,19 @@ export function init() {
  * Open the modal and load Git evidence
  * @param {string} storyId - Story ID to fetch evidence for
  * @param {string} projectRoot - Project root path
+ * @param {Object} preFetchedData - Optional pre-fetched Git data
  */
-export async function openGitEvidence(storyId, projectRoot) {
+export async function openGitEvidence(storyId, projectRoot, preFetchedData = null) {
     open();
     setTitle(`Git Evidence: ${storyId}`);
-    showLoading();
 
+    if (preFetchedData && preFetchedData.commits) {
+        // Use pre-fetched data immediately for instant response
+        renderGitContent(preFetchedData);
+        return;
+    }
+
+    showLoading();
     try {
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
@@ -101,12 +108,19 @@ export async function openGitEvidence(storyId, projectRoot) {
  * Open the modal and load Test evidence
  * @param {string} storyId - Story ID to fetch evidence for
  * @param {string} projectRoot - Project root path
+ * @param {Object} preFetchedData - Optional pre-fetched Test data
  */
-export async function openTestEvidence(storyId, projectRoot) {
+export async function openTestEvidence(storyId, projectRoot, preFetchedData = null) {
     open();
     setTitle(`Test Evidence: ${storyId}`);
-    showLoading();
 
+    if (preFetchedData && preFetchedData.total_tests !== undefined) {
+        // Use pre-fetched data immediately
+        renderTestContent(preFetchedData);
+        return;
+    }
+
+    showLoading();
     try {
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();

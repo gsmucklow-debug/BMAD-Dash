@@ -23,7 +23,10 @@
       "mcp__plugin_playwright_playwright__browser_type",
       "mcp__plugin_playwright_playwright__browser_network_requests",
       "mcp__plugin_playwright_playwright__browser_handle_dialog",
-      "mcp__plugin_playwright_playwright__browser_close"
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(npx tailwindcss:*)",
+      "Bash(del \"_bmad-output\\\\implementation-artifacts\\\\project-state.json\")",
+      "Bash(del \".bmad-cache\\\\stories.json\")"
     ]
   }
 }

@@ -86,23 +86,29 @@ function getTimelineEvents(stories) {
         storyId: '0.0'
     });
 
-    // Sort events: Newest first (most recent at top)
+    // Sort events: Latest at top, oldest at bottom (reverse chronological)
     events.sort((a, b) => {
         const dateA = normalizeDate(a.date);
         const dateB = normalizeDate(b.date);
 
-        // Sort by Date Descending (newest first)
+        // Sort by Date Descending (newest first - latest at top)
         if (dateA > dateB) return -1;
         if (dateA < dateB) return 1;
 
-        // If dates are equal, sort by Story ID Descending (5.55 before 0.1)
-        const partsA = (a.storyId || "0.0").split('.').map(Number);
-        const partsB = (b.storyId || "0.0").split('.').map(Number);
+        // If dates are equal, sort by Story ID numerically (0.1, 1.1, 1.2, etc.)
+        const parseStoryId = (storyId) => {
+            const parts = (storyId || "0.0").split('.');
+            const major = parseInt(parts[0]) || 0;
+            const minor = parseInt(parts[1]) || 0;
+            return [major, minor];
+        };
 
-        // Compare major version
-        if (partsA[0] !== partsB[0]) return partsB[0] - partsA[0];
-        // Compare minor version
-        return (partsB[1] || 0) - (partsA[1] || 0);
+        const [majorA, minorA] = parseStoryId(a.storyId);
+        const [majorB, minorB] = parseStoryId(b.storyId);
+
+        // Numeric comparison: 0.1 < 1.1 < 1.2 < 5.5 < 5.55 < 5.6 < 5.7
+        if (majorA !== majorB) return majorA - majorB;
+        return minorA - minorB;
     });
 
     return events;
@@ -110,8 +116,8 @@ function getTimelineEvents(stories) {
 
 function normalizeDate(dateStr) {
     if (!dateStr || dateStr === 'Recently' || dateStr === 'Active Now') {
-        // Return a future date to ensure "Recently" and "Active Now" stay at top
-        return '9999-12-31';
+        // Return a very old date to put undated stories at the bottom (oldest)
+        return '1970-01-01';
     }
     return dateStr;
 }

@@ -9,12 +9,14 @@ import { render as renderQuickGlance } from '../components/quick-glance.js';
 import { getBadgesSkeletonHTML, renderBadgesFromData } from '../components/evidence-badge.js';
 import { renderActionCard, attachActionCardListeners } from '../components/action-card.js';
 import { render as renderCacheStatus, attachListeners as attachCacheListeners } from '../components/cache-status.js';
+import { getBMADSync } from '../components/bmad-sync.js';
+import { openStoryDetail } from '../components/story-modal.js';
 
 /**
  * Render the Dashboard View
  * @param {Object} data - Dashboard data from API
  */
-export function render(data) {
+export async function render(data) {
     const container = document.getElementById('main-content');
     if (!container) {
         console.error('Main content container not found');
@@ -43,13 +45,17 @@ export function render(data) {
 
     // Attach action card event listeners after rendering
     attachActionCardListeners(data);
-    
+
     // Attach cache status event listeners - will trigger project reload
     attachCacheListeners(projectRoot, async () => {
         // Trigger project reload which will refresh dashboard
         const loadButton = document.getElementById('load-project-btn');
         if (loadButton) loadButton.click();
     });
+
+    // Initialize BMAD sync (Story 5.6) - fire and forget, non-blocking
+    const bmadSync = getBMADSync();
+    bmadSync.init(projectRoot).catch(err => console.error('BMAD sync init failed:', err));
 
     // Initialize badges for all stories using pre-fetched evidence data
     allStories.forEach(story => {
@@ -62,6 +68,15 @@ export function render(data) {
                 story.id,
                 projectRoot
             );
+        }
+    });
+
+    // Attach delegated click listener for story cards
+    container.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-story-id]');
+        if (card && !e.target.closest('button') && !e.target.closest('a')) {
+            const storyId = card.getAttribute('data-story-id');
+            openStoryDetail(storyId, projectRoot);
         }
     });
 }
@@ -155,7 +170,8 @@ function renderStoryCard(story, projectRoot) {
     }
 
     return `
-        <div class="bg-bmad-surface hover:bg-bmad-surface-hover border border-bmad-gray hover:border-bmad-accent/50 rounded p-3 transition-all cursor-pointer group shadow-sm">
+        <div class="bg-bmad-surface hover:bg-bmad-surface-hover border border-bmad-gray hover:border-bmad-accent/50 rounded p-3 transition-all cursor-pointer group shadow-sm" 
+             data-story-id="${story.id}">
             <div class="flex justify-between items-start mb-2">
                 <span class="text-xs font-mono text-bmad-muted group-hover:text-bmad-accent transition-colors">${story.id}</span>
                 ${formattedEpic ? `<span class="text-[10px] bg-bmad-gray/50 px-1.5 py-0.5 rounded text-bmad-muted truncate max-w-[80px]">${formattedEpic}</span>` : ''}

@@ -176,7 +176,9 @@ export class GapWarning {
      */
     async fetchGaps() {
         try {
-            const response = await fetch('/api/workflow-gaps');
+            // Get project root from localStorage (same as other API calls)
+            const projectRoot = localStorage.getItem('bmad_project_root') || '.';
+            const response = await fetch(`/api/workflow-gaps?project_root=${encodeURIComponent(projectRoot)}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }

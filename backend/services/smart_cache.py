@@ -50,9 +50,7 @@ class SmartCache:
     CACHE_VERSION = "1"
     CACHE_DIR = ".bmad-cache"
     CACHE_FILE = "stories.json"
-    
-    # Statuses that should always be refreshed
-    ACTIVE_STATUSES = ["in-progress", "review", "backlog", "todo", "ready-for-dev"]
+    LOCK_FILE = "stories.json.lock"
     
     def __init__(self, project_root: str):
         """
@@ -64,12 +62,12 @@ class SmartCache:
         self.project_root = Path(project_root)
         self.cache_dir = self.project_root / self.CACHE_DIR
         self.cache_file = self.cache_dir / self.CACHE_FILE
+        self.lock_file = self.cache_dir / self.LOCK_FILE
         self._cache_data: Optional[Dict[str, Any]] = None
         
     def _load_cache(self) -> Dict[str, Any]:
         """Load cache from disk, returning empty dict if missing or corrupted."""
         if not self.cache_file.exists():
-            logger.debug(f"Cache file not found: {self.cache_file}")
             return self._empty_cache()
         
         try:
@@ -78,12 +76,10 @@ class SmartCache:
                 
             # Validate cache version
             if data.get("metadata", {}).get("cache_version") != self.CACHE_VERSION:
-                logger.info("Cache version mismatch, clearing cache")
                 return self._empty_cache()
                 
             return data
-        except (json.JSONDecodeError, IOError) as e:
-            logger.warning(f"Error loading cache: {e}, using empty cache")
+        except (json.JSONDecodeError, IOError):
             return self._empty_cache()
     
     def _empty_cache(self) -> Dict[str, Any]:
@@ -98,79 +94,86 @@ class SmartCache:
         }
     
     def _save_cache(self, cache_data: Dict[str, Any]):
-        """Save cache to disk with atomic write to prevent corruption."""
+        """Save cache to disk with atomic write and basic locking."""
+        import time
+        lock_acquired = False
+        max_retries = 5
+        
         try:
             # Ensure cache directory exists
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+            # Basic lock file check (cooperative)
+            for _ in range(max_retries):
+                if not self.lock_file.exists():
+                    try:
+                        self.lock_file.touch(exist_ok=False)
+                        lock_acquired = True
+                        break
+                    except FileExistsError:
+                        pass
+                time.sleep(0.1)
+
             # Update metadata
             cache_data["metadata"]["cached_at"] = datetime.now(timezone.utc).isoformat()
-            cache_data["metadata"]["project"] = self.project_root.name
-
+            
             # Atomic write: write to temp file, then rename
             temp_file = self.cache_file.with_suffix('.tmp')
             with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2)
 
-            # Atomic rename (overwrites existing file)
+            # Atomic rename
             temp_file.replace(self.cache_file)
-
-            logger.debug(f"Cache saved to {self.cache_file}")
-        except IOError as e:
+            
+        except Exception as e:
             logger.error(f"Error saving cache: {e}")
+        finally:
+            if lock_acquired:
+                try:
+                    self.lock_file.unlink(missing_ok=True)
+                except:
+                    pass
     
     def get_story_evidence(
         self,
         story_id: str,
-        story_file_path: str,
-        story_status: str
+        story_file_path: str
     ) -> Tuple[Optional[Dict[str, Any]], bool]:
         """
-        Get cached evidence for a story if valid.
+        Get cached evidence for a story if valid based on mtime.
+        Now status-agnostic (caller decides what to cache).
         
         Args:
-            story_id: Story identifier (e.g., "5.4")
+            story_id: Story identifier
             story_file_path: Path to the story markdown file
-            story_status: Current status of the story
             
         Returns:
             Tuple of (evidence_dict, cache_hit)
-            - evidence_dict: Cached evidence if valid, None otherwise
-            - cache_hit: True if cache was used, False if refresh needed
         """
         if not self._cache_data:
             self._cache_data = self._load_cache()
-        
-        # Always refresh active stories (in-progress, review, backlog, etc.)
-        if story_status in self.ACTIVE_STATUSES:
-            logger.debug(f"Story {story_id} has active status '{story_status}', forcing refresh")
-            return None, False
         
         # Get cached story data
         stories = self._cache_data.get("stories", {})
         cached_story = stories.get(story_id)
         
         if not cached_story:
-            logger.debug(f"Story {story_id} not in cache")
             return None, False
         
         # Check file modification time
         try:
+            if not os.path.exists(story_file_path):
+                return None, False
+                
             current_mtime = os.path.getmtime(story_file_path)
             cached_mtime = cached_story.get("file_mtime", 0)
             
-            # Use small epsilon for float comparison (0.01s = 10ms tolerance)
+            # Use 10ms tolerance
             if abs(current_mtime - cached_mtime) < 0.01:
-                # Cache hit - file hasn't changed
-                logger.debug(f"Cache hit for story {story_id} (mtime matches)")
                 return cached_story.get("evidence", {}), True
-            else:
-                # File changed - need refresh
-                logger.debug(f"Story {story_id} file changed (mtime mismatch), forcing refresh")
-                return None, False
+            return None, False
                 
-        except OSError as e:
-            logger.warning(f"Error getting mtime for {story_file_path}: {e}")
+        except OSError:
             return None, False
     
     def set_story_evidence(
@@ -298,3 +301,22 @@ class SmartCache:
             for story_id, data in stories.items()
             if data.get("status") == "done"
         ]
+
+    def prune(self, valid_story_ids: list[str]):
+        """
+        Remove orphaned stories from the cache.
+        
+        Args:
+            valid_story_ids: List of story IDs currently valid in the project.
+        """
+        if not self._cache_data:
+            self._cache_data = self._load_cache()
+            
+        stories = self._cache_data.get("stories", {})
+        orphan_ids = [sid for sid in stories if sid not in valid_story_ids]
+        
+        if orphan_ids:
+            for sid in orphan_ids:
+                del stories[sid]
+            self._save_cache(self._cache_data)
+            logger.info(f"Pruned {len(orphan_ids)} orphaned stories from cache")

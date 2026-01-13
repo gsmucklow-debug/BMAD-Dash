@@ -56,6 +56,10 @@ def create_app():
     from backend.api.validation import validation_bp
     app.register_blueprint(validation_bp)
 
+    # Register BMAD Sync blueprint (Story 5.6)
+    from backend.api.bmad_sync import bmad_sync_bp
+    app.register_blueprint(bmad_sync_bp)
+
     @app.route('/')
     def index():
         return app.send_static_file('index.html')

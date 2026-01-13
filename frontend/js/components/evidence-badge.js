@@ -29,18 +29,10 @@ export function renderBadgesFromData(containerId, evidenceData, storyId, project
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Parse evidence data from cache
-    const gitData = evidenceData.commits !== undefined ? {
-        status: evidenceData.commits > 0 ? 'green' : 'red',
-        commits: [{ message: 'cached' }], // Minimal data for display
-        count: evidenceData.commits
-    } : null;
-
-    const testData = evidenceData.tests_passed !== undefined ? {
-        status: (evidenceData.tests_total > 0 && evidenceData.healthy) ? 'green' : 'yellow',
-        pass_count: evidenceData.tests_passed || 0,
-        total_tests: evidenceData.tests_total || 0
-    } : null;
+    // Pass the full rich evidence data directly
+    // Check for commits array, commit_count, or status field to determine if git evidence exists
+    const gitData = (evidenceData.commits || evidenceData.commit_count !== undefined || evidenceData.status) ? evidenceData : null;
+    const testData = (evidenceData.tests_total !== undefined || evidenceData.tests_passed !== undefined) ? evidenceData : null;
 
     renderBadges(container, gitData, testData, null, storyId, projectRoot);
 }
@@ -86,14 +78,20 @@ function renderBadges(container, gitData, testData, reviewData, storyId, project
     const gitBadge = document.createElement('button');
     gitBadge.className = `flex items-center px-2 py-1 rounded text-xs font-medium transition-colors border ${getGitBadgeColor(gitData)}`;
     gitBadge.innerHTML = getGitBadgeContent(gitData);
-    gitBadge.onclick = () => openGitEvidence(storyId, projectRoot);
+    gitBadge.onclick = (e) => {
+        e.stopPropagation(); // Don't trigger story card click
+        openGitEvidence(storyId, projectRoot, gitData);
+    };
     container.appendChild(gitBadge);
 
     // TEST BADGE
     const testBadge = document.createElement('button');
     testBadge.className = `flex items-center px-2 py-1 rounded text-xs font-medium transition-colors border ${getTestBadgeColor(testData)}`;
     testBadge.innerHTML = getTestBadgeContent(testData);
-    testBadge.onclick = () => openTestEvidence(storyId, projectRoot);
+    testBadge.onclick = (e) => {
+        e.stopPropagation(); // Don't trigger story card click
+        openTestEvidence(storyId, projectRoot, testData);
+    };
     container.appendChild(testBadge);
 
     // REVIEWED BADGE (if review status is 'reviewed')
@@ -137,15 +135,37 @@ function getGitBadgeColor(data) {
 }
 
 function getGitBadgeContent(data) {
-    if (!data || (!data.commits && data.count === undefined)) return `
+    // Check if we have any git evidence at all
+    const hasGitData = data && (
+        data.commit_count !== undefined ||
+        data.commits !== undefined ||
+        data.count !== undefined
+    );
+
+    if (!hasGitData) return `
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
         No Commits
     `;
 
-    // Use 'count' field if available (cached data), otherwise use commits.length (live data)
-    const count = data.count !== undefined ? data.count : (data.commits ? data.commits.length : 0);
+    // Handle multiple evidence formats:
+    // 1. commit_count field (new format)
+    // 2. commits as integer (old cached format)
+    // 3. commits as array (live format)
+    // 4. count field (legacy)
+    let count;
+    if (data.commit_count !== undefined) {
+        count = data.commit_count;
+    } else if (typeof data.commits === 'number') {
+        count = data.commits;
+    } else if (Array.isArray(data.commits)) {
+        count = data.commits.length;
+    } else if (data.count !== undefined) {
+        count = data.count;
+    } else {
+        count = 0;
+    }
 
     if (count === 0) return `
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -174,7 +194,11 @@ function getTestBadgeColor(data) {
 }
 
 function getTestBadgeContent(data) {
-    if (!data || data.total_tests === undefined) return `
+    // Check for both field name variations
+    const totalTests = data.tests_total !== undefined ? data.tests_total : data.total_tests;
+    const passedTests = data.tests_passed !== undefined ? data.tests_passed : data.pass_count;
+
+    if (!data || (totalTests === undefined && data.total_tests === undefined && data.tests_total === undefined)) return `
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -185,7 +209,7 @@ function getTestBadgeContent(data) {
         <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Tests: ${data.pass_count}/${data.total_tests}
+        Tests: ${passedTests || 0}/${totalTests || 0}
     `;
 }
 

@@ -420,7 +420,8 @@ function setupEventHandlers() {
 async function initGapWarnings() {
     try {
         const gapWarning = new GapWarning();
-        const mainContent = document.querySelector('#breadcrumb');
+        // Fix: Use correct ID matching index.html (#breadcrumb-container)
+        const mainContent = document.querySelector('#breadcrumb-container');
 
         if (mainContent) {
             await gapWarning.initialize(mainContent);
