@@ -370,16 +370,16 @@ class BMADParser:
         """
         Extract workflow history from story frontmatter
         Falls back to Git commit message analysis if frontmatter history is missing
-        
+
         Args:
             frontmatter: Parsed YAML frontmatter dictionary
             story_id: Story identifier (e.g., "1.3") for Git fallback
             story_path: Path to story file for Git fallback
-            
+
         Returns:
             List of workflow execution records, sorted by timestamp (most recent first)
         """
-        workflows = frontmatter.get('workflows', [])
+        workflows = frontmatter.get('workflow_history', [])
         
         # If workflows is a list of dicts, return directly (sorted)
         if isinstance(workflows, list) and workflows:
@@ -391,7 +391,17 @@ class BMADParser:
             )
             return sorted_workflows
         
-        # Git fallback: extract workflow history from Git commit messages
+        # Fallback 1: Check for code-review-*.md files
+        # This handles retroactive reviews where workflow_history wasn't added to frontmatter
+        if story_id and self.root_path:
+            try:
+                code_review_workflows = self._detect_code_review_files(story_id)
+                if code_review_workflows:
+                    return code_review_workflows
+            except Exception as e:
+                print(f"Warning: Code review file detection failed for story {story_id}: {e}")
+
+        # Fallback 2: Extract workflow history from Git commit messages
         # This happens when frontmatter workflows is missing or empty
         if story_id and self.root_path:
             try:
@@ -401,10 +411,90 @@ class BMADParser:
             except Exception as e:
                 # Log but don't fail - just return empty list
                 print(f"Warning: Git fallback failed for story {story_id}: {e}")
-        
+
         # If workflows is None or not found, return empty list
         return []
-    
+
+    def _detect_code_review_files(self, story_id: str) -> list:
+        """
+        Detect workflow execution by checking for code-review-*.md files
+        Handles retroactive reviews where workflow_history wasn't added to frontmatter
+
+        Args:
+            story_id: Story identifier (e.g., "1.3")
+
+        Returns:
+            List of workflow execution records inferred from code review files
+        """
+        try:
+            import os
+            import yaml
+            from pathlib import Path
+
+            # Convert story_id to file pattern (e.g., "1.3" -> "code-review-1-3.md")
+            story_file_id = story_id.replace('.', '-')
+            code_review_pattern = f"code-review-{story_file_id}.md"
+
+            # Look for code review file in implementation-artifacts
+            artifacts_dir = os.path.join(self.root_path, '_bmad-output', 'implementation-artifacts')
+            code_review_path = os.path.join(artifacts_dir, code_review_pattern)
+
+            workflows = []
+
+            # Check if code review file exists
+            if os.path.exists(code_review_path):
+                # Parse the code review file to get metadata
+                with open(code_review_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                review_date = ''
+                review_exists = True  # Presence of file indicates review was done
+
+                # Try to extract YAML frontmatter if it exists
+                if content.startswith('---'):
+                    parts = content.split('---', 2)
+                    if len(parts) >= 3:
+                        try:
+                            metadata = yaml.safe_load(parts[1])
+                            review_date = metadata.get('date', '')
+                        except yaml.YAMLError as e:
+                            print(f"Warning: Failed to parse code review YAML for {story_id}: {e}")
+
+                # If no date in YAML, try to extract from content
+                if not review_date:
+                    # Look for patterns like "Date: 2026-01-10" or "Review Date: 2026-01-10"
+                    import re
+                    date_match = re.search(r'[Dd]ate[:\s]+(\d{4}-\d{2}-\d{2})', content)
+                    if date_match:
+                        review_date = date_match.group(1)
+
+                # If code review file exists, infer both workflows were completed
+                # (presence of the file indicates the review happened)
+                if review_exists:
+                    # Add dev-story workflow (must have been done before review)
+                    workflows.append({
+                        'name': 'dev-story',
+                        'workflow': 'bmad-bmm-workflows-dev-story',
+                        'status': 'done',
+                        'date': review_date,
+                        'source': 'inferred-from-code-review-file'
+                    })
+
+                    # Add code-review workflow
+                    workflows.append({
+                        'name': 'code-review',
+                        'workflow': 'bmad-bmm-workflows-code-review',
+                        'status': 'done',
+                        'date': review_date,
+                        'source': 'inferred-from-code-review-file'
+                    })
+
+            return workflows
+
+        except Exception as e:
+            print(f"Error detecting code review files for {story_id}: {e}")
+            return []
+
     def _extract_workflow_history_from_git(self, story_id: str) -> list:
         """
         Extract workflow history from Git commit messages
@@ -570,17 +660,24 @@ class BMADParser:
             discoverer = TestDiscoverer(self.root_path)
             test_files = discoverer.discover_tests_for_story(story_id)
 
-            if not test_files:
-                # No test files found - this is a gap
-                return True
+            # If test files found, count tests
+            if test_files:
+                # Use static count for gap detection to avoid running tests during parse
+                total_tests = 0
+                for tf in test_files:
+                    total_tests += discoverer.count_tests_static(tf)
 
-            # Use static count for gap detection to avoid running tests during parse
-            total_tests = 0
-            for tf in test_files:
-                total_tests += discoverer.count_tests_static(tf)
+                # Return True if 0 tests are found
+                return total_tests == 0
 
-            # Return True if 0 tests are found
-            return total_tests == 0
+            # No test files found - check for manual test evidence in story file
+            manual_counts = parse_test_counts_from_story_file(story_id, self.root_path)
+            if manual_counts and manual_counts.get('total_tests', 0) > 0:
+                # Manual test evidence found - no gap
+                return False
+
+            # No test files AND no manual evidence - this is a gap
+            return True
             
         except Exception as e:
             # If we can't check test evidence, don't add a gap
