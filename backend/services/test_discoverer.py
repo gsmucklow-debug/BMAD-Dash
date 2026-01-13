@@ -261,6 +261,34 @@ class TestDiscoverer:
             logger.error(f"Error parsing pytest results for {test_file_path}: {e}")
             return None
     
+    def count_tests_static(self, test_file_path: str) -> int:
+        """
+        Statically count tests in a file using regex to avoid running them.
+        Much faster than executing pytest/jest.
+        
+        Args:
+            test_file_path: Path to test file
+            
+        Returns:
+            Number of test functions/cases found
+        """
+        try:
+            with open(test_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                
+            count = 0
+            if test_file_path.endswith('.py'):
+                # Count "def test_" functions
+                count = len(re.findall(r'^\s*def\s+test_', content, re.MULTILINE))
+                # Also count class-based tests if needed (usually handled by def test_ inside class)
+            elif test_file_path.endswith('.js') or test_file_path.endswith('.ts'):
+                # Count "it(", "test(", "describe(" blocks? usually just it/test
+                count = len(re.findall(r'(?:it|test)\s*\(', content))
+                
+            return count
+        except Exception:
+            return 0
+
     def parse_jest_results(self, test_file_path: str) -> Optional[Dict]:
         """
         Parse jest test results by executing jest
