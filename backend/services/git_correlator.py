@@ -104,14 +104,17 @@ class GitCorrelator:
         
         # Build patterns (case-insensitive)
         patterns = [
+            # Matches: "1.3", "5-7" - simple word boundary match (Loose but effective)
+            re.compile(rf'\b{flexible_id}\b', re.IGNORECASE),
+
             # Matches: "Story 1.3", "Story: 1.3", "Story-1.3", "Story 1-3"
             re.compile(rf'story[:\s\-_]*{flexible_id}', re.IGNORECASE),
 
-            # Matches: "[1.3]", "[1-3]"
-            re.compile(rf'\[{flexible_id}\]', re.IGNORECASE),
+            # Matches: "[1.3]", "[1-3]", "[dev-story 5.6 5.7]"
+            re.compile(rf'\[[^\]]*{flexible_id}[^\]]*\]', re.IGNORECASE),
 
-            # Matches: "(1.3)", "(1-3)" - parentheses without prefix
-            re.compile(rf'\({flexible_id}\)', re.IGNORECASE),
+            # Matches: "(1.3)", "(1-3)"
+            re.compile(rf'\([^)]*{flexible_id}[^)]*\)', re.IGNORECASE),
 
             # Matches: "feat(story-1.3)", "fix(Story: 1.3)"
             re.compile(rf'(feat|fix|docs|style|refactor|test|chore)\(story[:\s\-_]*{flexible_id}\)', re.IGNORECASE),

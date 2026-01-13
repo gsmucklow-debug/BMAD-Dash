@@ -58,9 +58,9 @@ class MarkdownParser:
         task_counter = 1
         
         for i, line in enumerate(lines):
-            # Match top-level tasks (must start at beginning of line - no leading whitespace)
-            # Use raw line, not stripped
-            task_match = re.match(r'^[-*]\s+\[([ xX])\]\s+(.+)$', line)
+            line = line.strip('\r') # Handle CRLF
+            # Match top-level tasks (allow up to 2 spaces of indentation)
+            task_match = re.match(r'^\s{0,2}[-*]\s+\[([ xX])\]\s+(.+)$', line)
             
             if task_match:
                 # Save previous task if exists

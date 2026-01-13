@@ -70,6 +70,7 @@ class StoryDetailFetcher:
                 'summary': summary,
                 'total_tasks': len(tasks),
                 'completed_tasks': sum(1 for t in tasks if t['status'] == 'done'),
+                'raw_content': content
             }
 
         except Exception as e:
@@ -132,18 +133,18 @@ class StoryDetailFetcher:
         """
         tasks = []
 
-        # Find Tasks section
-        tasks_match = re.search(r'## Tasks\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+        # Find Tasks section (flexible: "Tasks", "Implementation Tasks", etc.)
+        tasks_match = re.search(r'## .*?Tasks\n(.*?)(?=\n## |\Z)', content, re.DOTALL | re.IGNORECASE)
         if not tasks_match:
             return tasks
 
         tasks_section = tasks_match.group(1)
 
         # Extract all task items (checkbox format)
-        # Pattern: "- [x] Task name" or "- [ ] Task name"
-        task_pattern = r'-\s+\[([ xX])\]\s+(.+?)(?=\n-|\Z)'
+        # Pattern: "- [x] Task name" or "* [ ] Task name"
+        task_pattern = r'^\s*[-*]\s+\[([ xX])\]\s+(.+?)(?=\r?\n\s*[-*]|\Z)'
 
-        for match in re.finditer(task_pattern, tasks_section):
+        for match in re.finditer(task_pattern, tasks_section, re.MULTILINE):
             checkbox = match.group(1)
             title = match.group(2).strip()
 

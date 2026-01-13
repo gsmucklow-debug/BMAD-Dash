@@ -9,6 +9,7 @@ from pathlib import Path
 from backend.services.bmad_sync import BMADSyncService
 
 class TestBMADSyncService(unittest.TestCase):
+    story_id = "5.6"  # Link to Story 5.6
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.project_root = self.test_dir
