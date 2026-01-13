@@ -77,15 +77,14 @@ class TestDiscoverer:
         # Phase 2: Content-based discovery (search for story references inside files)
         # This handles projects where tests are named by module, not by story ID
         content_patterns = [
-            f'story_id="{normalized_id}"',      # story_id="2.3"
-            f"story_id='{normalized_id}'",      # story_id='2.3'
-            f'story_id: "{normalized_id}"',     # story_id: "2.3" (YAML-style)
-            f"@story {normalized_id}",          # @story 2.3 (decorator/comment)
-            f"Story {normalized_id}",           # Story 2.3 (docstring)
-            f"story-{epic}.{story}",            # story-2.3 (URL/slug style)
-            f"story_{epic}_{story}",            # story_2_3 (underscore style)
-            f"'id': '{normalized_id}'",         # 'id': '2.3' (dict format)
-            f'"id": "{normalized_id}"',         # "id": "2.3" (dict format)
+            # Flexible regex patterns for story ID detection
+            r'story_id\s*=\s*["\']' + re.escape(normalized_id) + r'["\']',  # story_id = "2.3" (flexible spaces)
+            r'story_id\s*:\s*["\']' + re.escape(normalized_id) + r'["\']',  # story_id: "2.3" (YAML/JSON style)
+            r'@story\s+' + re.escape(normalized_id),                         # @story 2.3
+            r'Story\s+' + re.escape(normalized_id),                          # Story 2.3 (docstring)
+            r'story-' + re.escape(epic) + r'\.' + re.escape(story),          # story-2.3
+            r'story_' + re.escape(epic) + r'_' + re.escape(story),           # story_2_3
+            r'["\']id["\']\s*:\s*["\']' + re.escape(normalized_id) + r'["\']', # "id": "2.3"
         ]
         
         for test_dir in test_dirs:
@@ -101,7 +100,7 @@ class TestDiscoverer:
                 try:
                     content = test_file.read_text(encoding='utf-8', errors='ignore')
                     for pattern in content_patterns:
-                        if pattern in content:
+                        if re.search(pattern, content, re.IGNORECASE):
                             matching_files.append(file_path)
                             logger.debug(f"Content match for story {story_id}: {file_path}")
                             break
@@ -118,7 +117,7 @@ class TestDiscoverer:
                     try:
                         content = test_file.read_text(encoding='utf-8', errors='ignore')
                         for pattern in content_patterns:
-                            if pattern in content:
+                            if re.search(pattern, content, re.IGNORECASE):
                                 matching_files.append(file_path)
                                 logger.debug(f"Content match for story {story_id}: {file_path}")
                                 break
