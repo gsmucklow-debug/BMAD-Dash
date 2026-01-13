@@ -26,7 +26,9 @@
       "mcp__plugin_playwright_playwright__browser_close",
       "Bash(npx tailwindcss:*)",
       "Bash(del \"_bmad-output\\\\implementation-artifacts\\\\project-state.json\")",
-      "Bash(del \".bmad-cache\\\\stories.json\")"
+      "Bash(del \".bmad-cache\\\\stories.json\")",
+      "Bash(findstr:*)",
+      "Bash(git push:*)"
     ]
   }
 }
