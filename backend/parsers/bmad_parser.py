@@ -492,9 +492,18 @@ class BMADParser:
         executed_workflows = set()
         for wf in workflow_history:
             if isinstance(wf, dict):
-                wf_name = wf.get('name', '')
-                if wf_name:
-                    executed_workflows.add(wf_name)
+                # Handle dict entries (from frontmatter or git logs)
+                wf_name = wf.get('name') or wf.get('workflow') or ''
+            elif isinstance(wf, str):
+                # Handle string entries
+                wf_name = wf
+            else:
+                wf_name = ''
+            
+            if wf_name:
+                # Normalize: remove 'bmad-bmm-workflows-' prefix if present
+                clean_name = wf_name.replace('bmad-bmm-workflows-', '')
+                executed_workflows.add(clean_name)
         
         # Gap 1: Story is "done" but no "dev-story" workflow was run
         if status == 'done' and 'dev-story' not in executed_workflows:
@@ -565,16 +574,13 @@ class BMADParser:
                 # No test files found - this is a gap
                 return True
 
-            # Parse test results
-            total_passing = 0
+            # Use static count for gap detection to avoid running tests during parse
+            total_tests = 0
+            for tf in test_files:
+                total_tests += discoverer.count_tests_static(tf)
 
-            # Use the function to parse test counts from story file
-            test_data = parse_test_counts_from_story_file(story_id, self.root_path)
-            if test_data:
-                total_passing = test_data.get('pass_count', 0)
-
-            # Return True if 0 tests are passing
-            return total_passing == 0
+            # Return True if 0 tests are found
+            return total_tests == 0
             
         except Exception as e:
             # If we can't check test evidence, don't add a gap
