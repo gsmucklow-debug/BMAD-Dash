@@ -249,23 +249,28 @@ class ProjectStateCache:
                     
                 # Get Test Evidence
                 try:
-                    test_ev = test_discoverer.get_test_evidence_for_story(story_id, project_root)
-                    if test_ev:
-                        story.evidence["tests_passed"] = test_ev.pass_count
-                        story.evidence["tests_total"] = test_ev.pass_count + test_ev.fail_count
-                        story.evidence["healthy"] = (test_ev.fail_count == 0) and (test_ev.pass_count > 0)
-                        story.evidence["failing_tests"] = test_ev.failing_test_names
-                        story.evidence["test_files"] = test_ev.test_files
-                        if test_ev.last_run_time:
-                             story.evidence["last_test_run"] = test_ev.last_run_time.isoformat()
+                    # PERFORMANCE FIX: Don't run full tests during bootstrap for all stories.
+                    # Just discover the files for now. Full parsing happens during sync/detail fetch.
+                    test_files = test_discoverer.discover_tests_for_story(story_id)
+                    story.evidence["test_files"] = test_files
+                    
+                    # Only do full test parse (subprocess run) for active stories
+                    if story.status in ["in-progress", "review"] and test_files:
+                        test_ev = test_discoverer.get_test_evidence_for_story(story_id, project_root)
+                        if test_ev:
+                            story.evidence["tests_passed"] = test_ev.pass_count
+                            story.evidence["tests_total"] = test_ev.pass_count + test_ev.fail_count
+                            story.evidence["healthy"] = (test_ev.fail_count == 0) and (test_ev.pass_count > 0)
+                            story.evidence["failing_tests"] = test_ev.failing_test_names
+                            if test_ev.last_run_time:
+                                 story.evidence["last_test_run"] = test_ev.last_run_time.isoformat()
                 except Exception as e:
                     logger.warning(f"Test evidence collection failed for {story_id}: {e}")
                 
-                # Store in SmartCache after collecting evidence
+                # Update but don't save yet (save once at the end for performance)
                 if use_smart_cache and smart_cache:
-                    smart_cache.set_story_evidence(
-                        story_id, story_file_path, story.status, story.evidence, story.title
-                    )
+                    # We'll save the whole structure at the end of bootstrap
+                    pass
                 
         # Create State
         # Infer current story? For now leaving empty or simple
@@ -282,6 +287,23 @@ class ProjectStateCache:
             version="1.0"
         )
         
+        # Save SmartCache at the end of bootstrap (much faster)
+        if use_smart_cache and smart_cache:
+            from datetime import datetime, timezone
+            for sid, s in stories.items():
+                s_file_path = s.file_path or os.path.join(
+                    project_root, "_bmad-output/implementation-artifacts", f"{s.story_key}.md"
+                )
+                # Ensure evidence is stored in the cache object before final save
+                smart_cache._cache_data["stories"][sid] = {
+                    "title": s.title,
+                    "status": s.status,
+                    "file_mtime": os.path.getmtime(s_file_path) if os.path.exists(s_file_path) else 0,
+                    "evidence": s.evidence,
+                    "cached_at": datetime.now(timezone.utc).isoformat()
+                }
+            smart_cache._save_cache(smart_cache._cache_data)
+
         self.cache_data = state
         self.save()
         logger.info(f"Bootstrap complete. Cache hits: {cache_hits}, Cache misses: {cache_misses}")
