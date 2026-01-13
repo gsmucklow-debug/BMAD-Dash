@@ -125,10 +125,27 @@ def get_dashboard():
 
 def sort_story_key(story_id):
     try:
+        # Treat story_id as a semantic version: "5.55" sorts between "5.5" and "5.6"
+        # Split into major.minor.patch
         parts = story_id.split('.')
-        return (int(parts[0]), int(parts[1]))
+
+        if len(parts) == 2:
+            # Standard format: "5.6" or "5.55"
+            major = int(parts[0])
+            minor_str = parts[1]
+
+            # Pad to ensure correct sorting: "5" becomes "50", "55" stays "55", "6" becomes "60"
+            # This makes: 5.5 (50) < 5.55 (55) < 5.6 (60)
+            if len(minor_str) == 1:
+                minor = int(minor_str) * 10  # "6" → 60
+            else:
+                minor = int(minor_str)  # "55" → 55
+
+            return (major, minor, 0)
+        else:
+            return (0, 0, 0)
     except:
-        return (0, 0)
+        return (0, 0, 0)
 
 def sort_epic_key(epic_id):
     try:
@@ -334,11 +351,20 @@ def build_quick_glance(project) -> Dict[str, Any]:
     if done_stories:
         # Sort by completion date (most recent first), then by story_id (highest first) as tiebreaker
         def sort_key(story):
-            # Parse story_id (e.g., "3.1" -> (3, 1)) for proper numeric comparison
+            # Parse story_id with semantic versioning (5.5 < 5.55 < 5.6)
+            # Single-digit minors pad to tens place: "5" -> 50, "6" -> 60, "7" -> 70
+            # Two-digit minors stay as-is: "55" -> 55
             try:
                 parts = story.story_id.split('.')
                 epic_num = int(parts[0]) if len(parts) > 0 else 0
-                story_num = int(parts[1]) if len(parts) > 1 else 0
+                if len(parts) > 1:
+                    minor_str = parts[1]
+                    if len(minor_str) == 1:
+                        story_num = int(minor_str) * 10  # "5" -> 50, "6" -> 60, "7" -> 70
+                    else:
+                        story_num = int(minor_str)  # "55" -> 55
+                else:
+                    story_num = 0
                 story_tuple = (epic_num, story_num)
             except (ValueError, AttributeError):
                 story_tuple = (0, 0)
@@ -523,7 +549,7 @@ def build_action_card(project) -> Dict[str, Any]:
         if done_stories and len(done_stories) == len(all_stories):
             # All stories complete - suggest retrospective
             action_card["command_layer"] = {
-                "command": "/bmad-bmm-workflows-retrospective",
+                "command": "/bmad:bmm:workflows:retrospective",
                 "description": "All stories complete - run retrospective"
             }
             # Use most recent completed story for context
@@ -548,7 +574,7 @@ def build_action_card(project) -> Dict[str, Any]:
             if story.status in ["todo", "backlog"]:
                 # Show as "next" not "current" by setting command to create-story
                 action_card["command_layer"] = {
-                    "command": f"/bmad-bmm-workflows-create-story {story.story_id}",
+                    "command": f"/bmad:bmm:workflows:create-story {story.story_id}",
                     "description": f"Start next story: {story.title}"
                 }
                 action_card["story_layer"] = {
@@ -567,7 +593,7 @@ def build_action_card(project) -> Dict[str, Any]:
         
         # Truly no stories - suggest creating first story
         action_card["command_layer"] = {
-            "command": "/bmad-bmm-workflows-create-story",
+            "command": "/bmad:bmm:workflows:create-story",
             "description": "No active stories - create first story"
         }
         return action_card
@@ -628,13 +654,13 @@ def build_action_card(project) -> Dict[str, Any]:
         command_description = ""
         
         if current_story.status in ["todo", "ready-for-dev"]:
-            command = f"/bmad-bmm-workflows-dev-story {current_story.story_id}"
+            command = f"/bmad:bmm:workflows:dev-story {current_story.story_id}"
             command_description = "Start or continue development on this story"
         elif current_story.status == "in-progress":
-            command = f"/bmad-bmm-workflows-dev-story {current_story.story_id}"
+            command = f"/bmad:bmm:workflows:dev-story {current_story.story_id}"
             command_description = "Continue development on this story"
         elif current_story.status == "review":
-            command = f"/bmad-bmm-workflows-code-review {current_story.story_id}"
+            command = f"/bmad:bmm:workflows:code-review {current_story.story_id}"
             command_description = "Run adversarial code review"
         
         action_card["command_layer"] = {
@@ -644,7 +670,7 @@ def build_action_card(project) -> Dict[str, Any]:
     else:
         # No stories found - suggest creating first story
         action_card["command_layer"] = {
-            "command": "/bmad-bmm-workflows-create-story",
+            "command": "/bmad:bmm:workflows:create-story",
             "description": "No active stories - create first story"
         }
     
@@ -675,6 +701,46 @@ def get_cache_stats():
     stats = smart_cache.get_cache_stats()
     
     return jsonify(stats), 200
+
+
+@dashboard_bp.route('/api/dashboard/story/<story_id>', methods=['GET'])
+@handle_api_errors
+def get_story_details(story_id):
+    """
+    Returns full story details (markdown + tasks) for the detail modal.
+    """
+    project_root = request.args.get('project_root')
+    if not project_root:
+        raise ValueError("project_root parameter is required")
+
+    smart_cache = SmartCache(project_root)
+    cache_file = os.path.join(project_root, "_bmad-output/implementation-artifacts/project-state.json")
+    state_cache = ProjectStateCache(cache_file, smart_cache=smart_cache)
+    
+    state = state_cache.load()
+    story = state.stories.get(story_id)
+    
+    if not story:
+        raise FileNotFoundError(f"Story {story_id} not found in cache")
+    
+    # Load markdown content if file exists
+    content = ""
+    if story.file_path and os.path.exists(story.file_path):
+        try:
+            with open(story.file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            logger.error(f"Error reading story file {story.file_path}: {e}")
+            content = f"Error reading story file: {str(e)}"
+
+    return jsonify({
+        "story_id": story.story_id,
+        "title": story.title,
+        "status": story.status,
+        "tasks": [task.to_dict() for task in story.tasks],
+        "content": content,
+        "evidence": story.evidence
+    })
 
 
 @dashboard_bp.route('/api/cache/clear', methods=['POST'])

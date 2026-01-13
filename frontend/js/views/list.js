@@ -29,7 +29,7 @@ export function render(data) {
     // If no active story, suggest creating the next story; otherwise suggest dev-story
     let nextCommand = data.action_card?.command;
     if (!nextCommand) {
-        nextCommand = currentStory ? '/bmad-bmm-workflows-dev-story' : '/bmad-bmm-workflows-create-story';
+        nextCommand = currentStory ? '/bmad:bmm:workflows:dev-story' : '/bmad:bmm:workflows:create-story';
     }
 
     // Render minimal UI - exactly 3 information items

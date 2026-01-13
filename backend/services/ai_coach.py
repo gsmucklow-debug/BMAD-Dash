@@ -10,10 +10,13 @@ import os
 import logging
 import re
 from pathlib import Path
+import requests
+from bs4 import BeautifulSoup
 from backend.services.bmad_version_detector import BMADVersionDetector
 from backend.services.validation_service import ValidationService
 from backend.services.project_state_cache import ProjectStateCache
 from backend.services.story_detail_fetcher import StoryDetailFetcher
+from backend.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ class AICoach:
     AI-powered contextual guidance using Gemini 3 Flash
     Provides streaming responses for real-time chat experience
     """
-    
+
     def __init__(self, api_key: str, project_root: str = None):
         """
         Initialize the AI Coach with Gemini API key
@@ -34,10 +37,10 @@ class AICoach:
         """
         self.api_key = api_key
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-3-flash-preview')
         self.version_detector = BMADVersionDetector(project_root) if project_root else None
         self.validation_service = ValidationService(project_root) if project_root else None
-        
+
         # Initialize ProjectStateCache (Story 5.4)
         self.project_state_cache = None
         if project_root:
@@ -48,6 +51,93 @@ class AICoach:
         self.story_detail_fetcher = StoryDetailFetcher(project_root) if project_root else None
 
         self.project_root = project_root
+
+        # Cache for BMAD documentation
+        self._bmad_docs_cache = None
+        self._bmad_docs_fetch_time = None
+
+    def _fetch_bmad_docs(self, force: bool = False) -> Optional[str]:
+        """
+        Fetch BMAD documentation from docs.bmad-method.org
+
+        Args:
+            force: Force re-fetch even if cached
+
+        Returns:
+            Extracted text content from BMAD docs or None if fetch fails
+        """
+        from datetime import datetime, timedelta
+
+        # Return cached docs if available and recent (within 1 hour)
+        if not force and self._bmad_docs_cache and self._bmad_docs_fetch_time:
+            age = datetime.now() - self._bmad_docs_fetch_time
+            if age < timedelta(hours=1):
+                logger.info("Returning cached BMAD docs")
+                return self._bmad_docs_cache
+
+        try:
+            docs_url = getattr(Config, 'BMAD_DOCS_URL', 'http://docs.bmad-method.org')
+            logger.info(f"Fetching BMAD documentation from {docs_url}")
+            response = requests.get(
+                docs_url,
+                timeout=10,
+                headers={'User-Agent': 'BMAD-Dash/1.0'}
+            )
+            response.raise_for_status()
+
+            # Parse HTML and extract main content safely (Fix #2: Fragile Parsing)
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Naive tag removal can be fragile if site structure changes.
+            # Instead, just extract text from body, assuming the LLM can handle some noise.
+            # But we still try to focus on 'main' or 'article' if present to be cleaner.
+            content_area = soup.find('main') or soup.find('article') or soup.body or soup
+
+            # Get text content
+            text = content_area.get_text(separator='\n', strip=True)
+
+            # Clean up multiple blank lines
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            cleaned_text = '\n'.join(lines)
+
+            # Limit to reasonable size with semantic truncation (Fix #3: Semantic Truncation)
+            MAX_CHARS = 8000
+            if len(cleaned_text) > MAX_CHARS:
+                # Find last newline within the limit to avoid cutting sentences/code
+                truncation_point = cleaned_text.rfind('\n', 0, MAX_CHARS)
+                if truncation_point == -1:
+                    truncation_point = MAX_CHARS # Fallback if no newline found
+
+                cleaned_text = cleaned_text[:truncation_point] + "\n\n... (documentation truncated for brevity)"
+
+            # Cache the result
+            self._bmad_docs_cache = cleaned_text
+            self._bmad_docs_fetch_time = datetime.now()
+
+            logger.info(f"Successfully fetched BMAD docs: {len(cleaned_text)} chars")
+            return cleaned_text
+
+        except Exception as e:
+            logger.error(f"Failed to fetch BMAD documentation: {e}")
+            return None
+
+    def _detect_bmad_methodology_question(self, message: str) -> bool:
+        """
+        Detect if user is asking about BMAD methodology, principles, or concepts
+
+        Args:
+            message: User's question
+
+        Returns:
+            True if question is about BMAD methodology
+        """
+        message_lower = message.lower()
+        bmad_keywords = [
+            'bmad method', 'bmad principle', 'bmad workflow', 'bmad process',
+            'what is bmad', 'how does bmad', 'bmad approach', 'bmad methodology',
+            'bmad concept', 'bmad practice', 'bmad framework', 'bmad documentation'
+        ]
+        return any(keyword in message_lower for keyword in bmad_keywords)
     
     def _format_validation_summary(self, validation_result) -> str:
         """
@@ -96,9 +186,9 @@ class AICoach:
 
             # Add suggested commands (Story 5.3 AC4)
             if not validation_result.has_dev_story_workflow:
-                summary += f"\n**Suggestion**: Run `/bmad-bmm-workflows-dev-story`"
+                summary += f"\n**Suggestion**: Run `/bmad:bmm:workflows:dev-story`"
             elif not validation_result.has_code_review_workflow:
-                summary += f"\n**Suggestion**: Run `/bmad-bmm-workflows-code-review`"
+                summary += f"\n**Suggestion**: Run `/bmad:bmm:workflows:code-review`"
 
         return summary
 
@@ -200,12 +290,58 @@ class AICoach:
 
         return system_prompt + details_section
 
-    def _build_system_prompt(self, context: Dict[str, Any]) -> str:
+    def _get_local_bmad_docs(self) -> Optional[str]:
+        """
+        Read BMAD documentation from the local _bmad folder.
+        Story 5.6: Prefer local docs over remote fetch.
+        """
+        if not self.project_root:
+            return None
+            
+        bmad_dir = Path(self.project_root) / '_bmad'
+        if not bmad_dir.exists() or not bmad_dir.is_dir():
+            return None
+            
+        docs_content = []
+        # BMAD structure: _bmad/core/*.md, _bmad/bmm/*.md
+        for sub_dir in ['core', 'bmm']:
+            path = bmad_dir / sub_dir
+            if path.exists() and path.is_dir():
+                for md_file in path.glob('**/*.md'):
+                    try:
+                        with open(md_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            # Strip frontmatter
+                            if content.startswith('---'):
+                                end_idx = content.find('---', 3)
+                                if end_idx != -1:
+                                    content = content[end_idx+3:].strip()
+                            
+                            docs_content.append(f"### {md_file.name}\n{content}")
+                    except Exception as e:
+                        logger.warning(f"Failed to read local doc {md_file}: {e}")
+                        
+        if not docs_content:
+            return None
+            
+        combined_docs = "\n\n".join(docs_content)
+        
+        # Limit size (roughly 12k chars for local docs)
+        MAX_CHARS = 12000
+        if len(combined_docs) > MAX_CHARS:
+             truncation_point = combined_docs.rfind('\n', 0, MAX_CHARS)
+             if truncation_point == -1: truncation_point = MAX_CHARS
+             combined_docs = combined_docs[:truncation_point] + "\n\n... (local documentation truncated)"
+             
+        return combined_docs
+
+    def _build_system_prompt(self, context: Dict[str, Any], bmad_docs: Optional[str] = None) -> str:
         """
         Constructs the system prompt with BMAD context and full Project State
 
         Args:
             context: Dictionary containing project context
+            bmad_docs: Optional BMAD documentation content to inject
 
         Returns:
             System prompt string
@@ -285,15 +421,35 @@ class AICoach:
         bmad_version = "latest"
         if self.version_detector:
             bmad_version = self.version_detector.detect_version()
-        
+
+        # Add BMAD sync version info (Story 5.6)
+        bmad_sync_info = ""
+        if effective_root:
+            try:
+                from backend.services.bmad_sync import BMADSyncService
+                sync_service = BMADSyncService(effective_root)
+                sync_status = sync_service.get_status()
+                bmad_sync_info = f"\nBMAD Sync Version: {sync_status.get('current_version', 'unknown')}"
+                if sync_status.get('last_updated'):
+                    from datetime import datetime
+                    last_updated = datetime.fromisoformat(sync_status['last_updated'])
+                    bmad_sync_info += f" (Last updated: {last_updated.strftime('%Y-%m-%d')})"
+            except Exception as e:
+                logger.warning(f"Could not load BMAD sync info: {e}")
+
         # Format validation summary if present (Story 5.3 AC2)
         validation_context = ""
         if validation_summary:
             validation_context = f"\n\n**Story Validation Results:**\n{validation_summary}"
 
-        system_prompt = f"""You are the BMAD (Brain-Friendly Method for AI Development) Coach AI assistant.
+        # Add BMAD documentation if provided
+        bmad_docs_context = ""
+        if bmad_docs:
+            bmad_docs_context = f"\n\n**BMAD METHODOLOGY DOCUMENTATION** (fetched from http://docs.bmad-method.org):\n\n{bmad_docs}\n\n---\n"
 
-BMAD Method Version: {bmad_version}
+        system_prompt = f"""You are the BMAD Coach AI assistant for this BMAD project dashboard.
+
+BMAD Method Documentation: http://docs.bmad-method.org (Version: {bmad_version}){bmad_sync_info}
 
 You help developers working on BMAD projects by providing contextual guidance based on their current project state.
 
@@ -305,19 +461,16 @@ Current Project Context:
 - Task Progress: {task_progress}
 - Current Task: {current_task} [{current_task_status}]{task_list_str}{ac_str}{validation_context}
 {project_state_context}
-
-BMAD Method Principles:
-1. Brain-Friendly Design: Minimize cognitive load, use progressive disclosure
-2. Validation-Driven: Verify AI agent work through Git commits and test results
-3. Zero-Friction Execution: One-click command copying, clear next steps
-4. Multi-View Adaptation: Support different cognitive states (Dashboard, Timeline, List)
+{bmad_docs_context}
+CRITICAL - About BMAD Method Documentation:
+{"**When asked about BMAD methodology, use the documentation provided above to answer questions.** Explain principles, workflows, and concepts based on the fetched documentation. If the documentation doesn't cover the specific question, acknowledge this and direct users to http://docs.bmad-method.org for more details." if bmad_docs else "**For questions about BMAD methodology, I will fetch and read the official documentation to provide accurate answers.** Do not invent or guess about BMAD principles, workflows, or concepts. Focus on the current project state, evidence gaps, and next steps based on what you know."}
 
 Your Role:
 - Provide project-aware answers based on current phase, epic, story, and task
-- Suggest appropriate BMAD workflows based on story state
+- Suggest appropriate BMAD workflows based on story state (use the workflow commands, don't explain them)
 - Help validate AI agent outputs by comparing claims vs. Git/test evidence
 - Detect workflow gaps and suggest corrective actions
-- Reference BMAD Method documentation when providing guidance
+- For BMAD methodology questions: Direct to http://docs.bmad-method.org
 
 Response Guidelines:
 - Be concise and actionable
@@ -328,24 +481,26 @@ Response Guidelines:
 
 BMAD Workflow Suggestions:
 When user asks "What should I do next?", analyze the current story status and suggest:
-- If status is "TODO" or "READY_FOR_DEV" → Suggest: `/bmad-bmm-workflows-dev-story {story_id}`
+- If status is "TODO" or "READY_FOR_DEV" → Suggest: `/bmad:bmm:workflows:dev-story {story_id}`
   Explanation: "Start development on this story by running the dev-story workflow."
-  
+
 - If status is "IN_PROGRESS" → Check progress:
   - If tasks incomplete → Suggest: "Continue implementing the remaining tasks"
-  - If tasks complete → Suggest: `/bmad-bmm-workflows-code-review {story_id}`
+  - If tasks complete → Suggest: `/bmad:bmm:workflows:code-review {story_id}`
   Explanation: "Run the code-review workflow to validate your implementation."
-  
-- If status is "REVIEW" → Suggest: `/bmad-bmm-workflows-code-review {story_id}`
+
+- If status is "REVIEW" → Suggest: `/bmad:bmm:workflows:code-review {story_id}`
   Explanation: "Run the adversarial code review to find and fix any issues."
-  
+
 - If status is "DONE" or "COMPLETE" → Suggest creating the next story or retrospective
   Explanation: "This story is complete. Consider creating the next story or running a retrospective."
 
-When providing workflow commands, always format them as:
+When providing workflow commands, always format them with colons (NOT hyphens):
 ```
-/bmad-bmm-workflows-[workflow-name] [story-id]
+/bmad:bmm:workflows:[workflow-name] [story-id]
 ```
+
+CRITICAL: Use colons (:) not hyphens (-) in workflow commands!
 
 When validating agent work:
 - Check Git commits exist for the story
@@ -392,7 +547,19 @@ Remember: You have access to the current project state, so reference it in your 
                 # Add validation summary to context
                 context['validation_summary'] = validation_summary
 
-            system_prompt = self._build_system_prompt(context)
+            # Detect if user is asking about BMAD methodology (Story 5.7)
+            bmad_docs = None
+            if self._detect_bmad_methodology_question(message):
+                logger.info("Detected BMAD methodology question - fetching documentation")
+                # Story 5.6: Prefer local synced docs
+                bmad_docs = self._get_local_bmad_docs()
+                if not bmad_docs:
+                    logger.info("Local docs not found, falling back to remote fetch")
+                    bmad_docs = self._fetch_bmad_docs()
+                if bmad_docs:
+                    logger.info(f"Injecting BMAD docs into prompt: {len(bmad_docs)} chars")
+
+            system_prompt = self._build_system_prompt(context, bmad_docs=bmad_docs)
 
             # Inject story details if user is asking about a specific story
             system_prompt = self._inject_story_details(message, system_prompt)
@@ -438,7 +605,19 @@ Remember: You have access to the current project state, so reference it in your 
             raise ValueError("GEMINI_API_KEY is not configured. Please set it in .env file")
 
         try:
-            system_prompt = self._build_system_prompt(context)
+            # Detect if user is asking about BMAD methodology (Story 5.7)
+            bmad_docs = None
+            if self._detect_bmad_methodology_question(message):
+                logger.info("Detected BMAD methodology question - searching for context")
+                # Story 5.6: Prefer local synced docs
+                bmad_docs = self._get_local_bmad_docs()
+                if not bmad_docs:
+                    logger.info("Local docs not found, falling back to remote fetch")
+                    bmad_docs = self._fetch_bmad_docs()
+                if bmad_docs:
+                    logger.info(f"Injecting BMAD docs into prompt: {len(bmad_docs)} chars")
+
+            system_prompt = self._build_system_prompt(context, bmad_docs=bmad_docs)
 
             # Inject story details if user is asking about a specific story
             system_prompt = self._inject_story_details(message, system_prompt)
