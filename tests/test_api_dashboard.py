@@ -449,14 +449,14 @@ class TestActionCardData:
         assert 'description' in command_layer
         
         # Verify command format
-        assert command_layer['command'].startswith('/bmad-bmm-workflows-')
+        assert command_layer['command'].startswith('/bmad:bmm:workflows:')
     
     def test_command_suggestion_for_ready_for_dev(self, client, bmad_dash_project_root, clear_cache):
         """
         Test command suggestion for ready-for-dev story
         
         Acceptance Criteria:
-        - Story with status "ready-for-dev" suggests /bmad-bmm-workflows-dev-story
+        - Story with status "ready-for-dev" suggests /bmad:bmm:workflows:dev-story
         """
         response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
         data = response.get_json()
@@ -466,7 +466,7 @@ class TestActionCardData:
         
         # If current story is ready-for-dev, verify command
         if story_layer and story_layer['status'] == 'ready-for-dev':
-            assert '/bmad-bmm-workflows-dev-story' in command_layer['command']
+            assert '/bmad:bmm:workflows:dev-story' in command_layer['command']
             assert story_layer['story_id'] in command_layer['command']
     
     def test_command_suggestion_for_in_progress(self, client, bmad_dash_project_root, clear_cache):
@@ -474,7 +474,7 @@ class TestActionCardData:
         Test command suggestion for in-progress story
         
         Acceptance Criteria:
-        - Story with status "in-progress" suggests /bmad-bmm-workflows-dev-story
+        - Story with status "in-progress" suggests /bmad:bmm:workflows:dev-story
         """
         response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
         data = response.get_json()
@@ -484,7 +484,7 @@ class TestActionCardData:
         
         # If current story is in-progress, verify command
         if story_layer and story_layer['status'] == 'in-progress':
-            assert '/bmad-bmm-workflows-dev-story' in command_layer['command']
+            assert '/bmad:bmm:workflows:dev-story' in command_layer['command']
             assert story_layer['story_id'] in command_layer['command']
     
     def test_command_suggestion_for_review(self, client, bmad_dash_project_root, clear_cache):
@@ -492,7 +492,7 @@ class TestActionCardData:
         Test command suggestion for review story
         
         Acceptance Criteria:
-        - Story with status "review" suggests /bmad-bmm-workflows-code-review
+        - Story with status "review" suggests /bmad:bmm:workflows:code-review
         """
         response = client.get(f'/api/dashboard?project_root={bmad_dash_project_root}')
         data = response.get_json()
@@ -502,7 +502,7 @@ class TestActionCardData:
         
         # If current story is in review, verify command
         if story_layer and story_layer['status'] == 'review':
-            assert '/bmad-bmm-workflows-code-review' in command_layer['command']
+            assert '/bmad:bmm:workflows:code-review' in command_layer['command']
             assert story_layer['story_id'] in command_layer['command']
     
     def test_action_card_json_serialization(self, client, bmad_dash_project_root, clear_cache):

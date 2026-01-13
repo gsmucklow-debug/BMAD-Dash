@@ -73,8 +73,7 @@ class TestSmartCache(unittest.TestCase):
         # Get evidence - should be cache hit
         cached_evidence, cache_hit = self.smart_cache.get_story_evidence(
             "1.1",
-            str(story_file),
-            "done"
+            str(story_file)
         )
         
         self.assertTrue(cache_hit)
@@ -106,15 +105,14 @@ class TestSmartCache(unittest.TestCase):
         # Get evidence - should be cache miss
         cached_evidence, cache_hit = self.smart_cache.get_story_evidence(
             "1.1",
-            str(story_file),
-            "done"
+            str(story_file)
         )
         
         self.assertFalse(cache_hit)
         self.assertIsNone(cached_evidence)
     
-    def test_active_status_always_refreshes(self):
-        """Test that active status stories always refresh (no cache)"""
+    def test_active_status_is_now_cached(self):
+        """Test that active status stories are now cached (SmartCache is now status-agnostic)"""
         # Create a test story file
         story_file = self.project_root / "story.md"
         story_file.write_text("# Test Story")
@@ -129,18 +127,17 @@ class TestSmartCache(unittest.TestCase):
             "Test Story"
         )
         
-        # Get evidence for in-progress story - should be cache miss
+        # Get evidence for in-progress story - should be cache hit
         cached_evidence, cache_hit = self.smart_cache.get_story_evidence(
             "1.1",
-            str(story_file),
-            "in-progress"
+            str(story_file)
         )
         
-        self.assertFalse(cache_hit)
-        self.assertIsNone(cached_evidence)
+        self.assertTrue(cache_hit)
+        self.assertEqual(cached_evidence, evidence)
     
-    def test_review_status_always_refreshes(self):
-        """Test that review status stories always refresh (no cache)"""
+    def test_review_status_is_now_cached(self):
+        """Test that review status stories are now cached (caller decides when to use)"""
         # Create a test story file
         story_file = self.project_root / "story.md"
         story_file.write_text("# Test Story")
@@ -155,15 +152,14 @@ class TestSmartCache(unittest.TestCase):
             "Test Story"
         )
         
-        # Get evidence for review story - should be cache miss
+        # Get evidence for review story - should be cache hit
         cached_evidence, cache_hit = self.smart_cache.get_story_evidence(
             "1.1",
-            str(story_file),
-            "review"
+            str(story_file)
         )
         
-        self.assertFalse(cache_hit)
-        self.assertIsNone(cached_evidence)
+        self.assertTrue(cache_hit)
+        self.assertEqual(cached_evidence, evidence)
     
     def test_invalidate_story(self):
         """Test invalidating a specific story cache entry"""
@@ -187,8 +183,7 @@ class TestSmartCache(unittest.TestCase):
         # Get evidence - should be cache miss
         cached_evidence, cache_hit = self.smart_cache.get_story_evidence(
             "1.1",
-            str(story_file),
-            "done"
+            str(story_file)
         )
         
         self.assertFalse(cache_hit)
@@ -351,8 +346,7 @@ class TestSmartCache(unittest.TestCase):
         # Try to get evidence - should return None (cache miss)
         cached_evidence, cache_hit = new_cache.get_story_evidence(
             "1.1",
-            str(self.project_root / "story.md"),
-            "done"
+            str(self.project_root / "story.md")
         )
         
         self.assertFalse(cache_hit)

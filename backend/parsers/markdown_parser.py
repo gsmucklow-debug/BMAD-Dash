@@ -60,7 +60,7 @@ class MarkdownParser:
         for i, line in enumerate(lines):
             line = line.strip('\r') # Handle CRLF
             # Match top-level tasks (allow up to 2 spaces of indentation)
-            task_match = re.match(r'^\s{0,2}[-*]\s+\[([ xX])\]\s+(.+)$', line)
+            task_match = re.match(r'^[-*]\s+\[([ xX])\]\s+(.+)$', line)
             
             if task_match:
                 # Save previous task if exists

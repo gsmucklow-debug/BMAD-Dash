@@ -79,8 +79,8 @@ class TestEnhancedAICoachContext:
         prompt = coach._build_system_prompt(context)
         
         assert 'BMAD Workflow Suggestions' in prompt
-        assert '/bmad-bmm-workflows-dev-story' in prompt
-        assert '/bmad-bmm-workflows-code-review' in prompt
+        assert '/bmad:bmm:workflows:dev-story' in prompt
+        assert '/bmad:bmm:workflows:code-review' in prompt
         assert 'TODO' in prompt or 'READY_FOR_DEV' in prompt
         assert 'IN_PROGRESS' in prompt
         assert 'REVIEW' in prompt

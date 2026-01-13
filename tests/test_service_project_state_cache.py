@@ -2,6 +2,7 @@ import pytest
 import os
 import json
 from pathlib import Path
+import time
 from unittest.mock import MagicMock, patch
 from datetime import datetime
 from backend.services.project_state_cache import ProjectStateCache
@@ -89,20 +90,34 @@ def test_bootstrap(cache_service):
         
         mock_commit = MagicMock()
         mock_commit.timestamp = datetime(2026, 1, 1)
+        mock_commit.message = "feat: test"
+        mock_commit.sha = "12345678"
+        mock_commit.to_dict.return_value = {"sha": "12345678", "message": "feat: test", "timestamp": "2026-01-01T00:00:00"}
         mock_git.get_commits_for_story.return_value = [mock_commit]
+        mock_git.calculate_status.return_value = ("active", 0)
+        mock_git.extract_task_references.return_value = []
         
-        mock_test_ev = MagicMock()
-        mock_test_ev.pass_count = 10
-        mock_test_ev.fail_count = 0
-        mock_test_ev.last_run_time = datetime(2026, 1, 1)
-        mock_test.get_test_evidence_for_story.return_value = mock_test_ev
+        mock_test.discover_tests_for_story.return_value = ["test_file.py"]
+        mock_test.count_tests_static.return_value = 10
         
-        state = cache_service.bootstrap(project_root=".")
+        with patch('os.path.exists', return_value=True), \
+             patch('os.path.getmtime', return_value=time.time()):
+            
+            mock_test_ev = MagicMock()
+            mock_test_ev.pass_count = 10
+            mock_test_ev.fail_count = 0
+            mock_test_ev.last_run_time = datetime(2026, 1, 1)
+            mock_test_ev.failing_test_names = []
+            mock_test.get_test_evidence_for_story.return_value = mock_test_ev
+            
+            state = cache_service.bootstrap(project_root=".")
         
         assert state is not None
         assert "epic-1" in state.epics
         assert "1.1" in state.stories
-        assert state.stories["1.1"].evidence["commits"] == 1
+        # Evidence structure changed to rich objects
+        assert len(state.stories["1.1"].evidence["commits"]) == 1
+        assert state.stories["1.1"].evidence["commit_count"] == 1
         # Check last_commit format
         assert state.stories["1.1"].evidence["last_commit"] == "2026-01-01T00:00:00"
         assert state.stories["1.1"].evidence["tests_passed"] == 10

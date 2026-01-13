@@ -42,7 +42,7 @@ title: "Workflow History & Gap Detection"
 epic: "epic-4"
 status: "in-progress"
 last_updated: "2026-01-10"
-workflows:
+workflow_history:
   - name: "dev-story"
     timestamp: "2026-01-10T10:00:00Z"
     result: "success"
@@ -159,7 +159,7 @@ story_id: "4.2"
 title: "Story Done Without Dev Story"
 epic: "epic-4"
 status: "done"
-workflows:
+workflow_history:
   - name: "code-review"
     timestamp: "2026-01-10T11:00:00Z"
     result: "success"
@@ -188,7 +188,7 @@ workflows:
         assert gap['type'] == 'missing-dev-story', "Gap type should be missing-dev-story"
         assert '⚠️' in gap['message'], "Gap message should contain warning emoji"
         assert 'dev-story' in gap['message'], "Gap message should mention dev-story"
-        assert gap['suggested_command'] == '/bmad-bmm-workflows-dev-story', "Gap should suggest dev-story command"
+        assert gap['suggested_command'] == '/bmad:bmm:workflows:dev-story', "Gap should suggest dev-story command"
         assert gap['severity'] == 'high', "Gap severity should be high"
     
     def test_detect_gap_missing_code_review(self):
@@ -200,7 +200,7 @@ story_id: "4.2"
 title: "Story Dev Without Code Review"
 epic: "epic-4"
 status: "in-progress"
-workflows:
+workflow_history:
   - name: "dev-story"
     timestamp: "2026-01-10T10:00:00Z"
     result: "success"
@@ -228,7 +228,7 @@ workflows:
         gap = story.gaps[0]
         assert gap['type'] == 'missing-code-review', "Gap type should be missing-code-review"
         assert 'code-review' in gap['message'], "Gap message should mention code-review"
-        assert gap['suggested_command'] == '/bmad-bmm-workflows-code-review', "Gap should suggest code-review command"
+        assert gap['suggested_command'] == '/bmad:bmm:workflows:code-review', "Gap should suggest code-review command"
         assert gap['severity'] == 'medium', "Gap severity should be medium"
     
     def test_no_gaps_when_complete(self):
@@ -240,7 +240,7 @@ story_id: "4.2"
 title: "Complete Story"
 epic: "epic-4"
 status: "in-progress"
-workflows:
+workflow_history:
   - name: "dev-story"
     timestamp: "2026-01-10T10:00:00Z"
     result: "success"

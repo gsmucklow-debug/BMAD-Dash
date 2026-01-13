@@ -28,7 +28,9 @@
       "Bash(del \"_bmad-output\\\\implementation-artifacts\\\\project-state.json\")",
       "Bash(del \".bmad-cache\\\\stories.json\")",
       "Bash(findstr:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:brainstorming:*)"
     ]
   }
 }
