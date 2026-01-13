@@ -11,6 +11,7 @@ from backend.services.bmad_version_detector import BMADVersionDetector
 
 class TestEnhancedAICoachContext:
     """Tests for enhanced AI Coach context injection"""
+    story_id = "5.2"
     
     @patch('backend.services.ai_coach.genai')
     def test_system_prompt_includes_story_status(self, mock_genai):
@@ -134,6 +135,7 @@ class TestEnhancedAICoachContext:
 
 class TestBMADVersionDetector:
     """Tests for BMAD version detection service"""
+    story_id = "5.2"
     
     def test_init_with_project_root(self):
         """Test initialization with project root"""

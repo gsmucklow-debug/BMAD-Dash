@@ -5,6 +5,13 @@ epic: "epic-5"
 status: "done"
 completed: "2026-01-10"
 last_updated: "2026-01-10"
+workflow_history:
+  - workflow: bmad-bmm-workflows-dev-story
+    status: done
+    date: "2026-01-10"
+  - workflow: bmad-bmm-workflows-code-review
+    status: done
+    date: "2026-01-10"
 ---
 
 # Story 5.1: Gemini API Integration & Streaming Chat
