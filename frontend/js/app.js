@@ -34,8 +34,16 @@ async function init() {
     router = new Router();
     setupRoutes();
 
-    // Load project root from localStorage or use default
-    const projectRoot = localStorage.getItem('bmad_project_root') || DEFAULT_PROJECT_ROOT;
+    // Load project root from URL parameter, localStorage, or use default
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlProjectRoot = urlParams.get('project_root');
+    const projectRoot = urlProjectRoot || localStorage.getItem('bmad_project_root') || DEFAULT_PROJECT_ROOT;
+
+    // Update localStorage if URL parameter provided
+    if (urlProjectRoot) {
+        localStorage.setItem('bmad_project_root', urlProjectRoot);
+    }
+
     document.getElementById('project-root-input').value = projectRoot;
 
     try {

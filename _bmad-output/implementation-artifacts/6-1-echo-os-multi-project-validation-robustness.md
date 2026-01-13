@@ -1,7 +1,7 @@
 ---
 story_id: "6.1"
 title: Echo-OS Multi-Project Validation & Robustness Hardening
-status: pending
+status: done
 epic: "epic-6"
 priority: critical
 tags: [parser, validation, robustness, multi-project, cache, ai-context]
