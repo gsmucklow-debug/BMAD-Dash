@@ -815,3 +815,79 @@ Suggestion: Run `/bmad-bmm-workflows-code-review` and add tests"
 **And** AI validation leverages Git and test evidence from Epic 2
 **And** validation runs in <500ms for comprehensive check
 **And** AI responses maintain conversation context across multiple questions
+
+### Story 5.4: Evidence-Based Task Progress Inference
+
+As a **user**,
+I want **the AI to infer task completion status based on Git commits and test evidence**,
+So that **I can trust progress indicators reflect actual work done, not just manual checkmarks**.
+
+**Acceptance Criteria:**
+
+**Given** a story has tasks and Git/test evidence
+**When** the AI analyzes task progress
+**Then** AI correlates Git commits to specific tasks based on commit messages
+**And** AI checks if tests exist for completed tasks
+**And** AI provides task completion confidence scores (High/Medium/Low)
+**And** AI warns if task marked "done" but no evidence found
+**And** AI suggests which tasks need attention based on evidence gaps
+**And** task progress inference runs automatically when story is displayed
+**And** inference completes in <200ms
+**And** confidence scores help users prioritize verification efforts
+
+## Epic 6: Multi-Project Validation & Robustness
+
+**User Outcome:** BMAD Dash works reliably across different BMAD projects with varied structures, file naming conventions, and project states. Users can confidently use the dashboard on any BMAD Method project.
+
+**What Users Can Accomplish:**
+- Point BMAD Dash at any BMAD project (not just BMAD Dash itself)
+- Trust that parser handles story ID format variations (5-1, 5.1, 5_1)
+- See graceful error messages when artifacts are malformed or missing
+- Validate multi-project compatibility using reusable compatibility matrix
+- Benefit from cache isolation between different projects
+- Receive accurate AI coach suggestions regardless of project structure
+
+**FRs Covered:** Multi-project robustness (new requirement emerging from Epic 5 retrospective)
+
+---
+
+### Story 6.1: Echo-OS Multi-Project Validation & Robustness Hardening
+
+As a **BMAD Method user**,
+I want **BMAD Dash to work reliably on any BMAD project, not just BMAD Dash itself**,
+So that **I can use the dashboard to recover lost projects, monitor progress across multiple projects, and trust it works regardless of file naming or structure variations**.
+
+**Acceptance Criteria:**
+
+**Evidence 1: Echo-OS Dashboard Loads Successfully**
+- Navigate to `localhost:5000?project_root=F:/Echo-OS` and dashboard renders without critical errors
+- Breadcrumb navigation displays accurate hierarchy
+- Quick Glance Bar shows Done | Current | Next stories
+- Kanban board displays stories organized by status
+- Page load time <500ms (meets baseline NFR1)
+- Screenshots of working dashboard saved to story completion evidence
+
+**Evidence 2: All Baseline Features Work on Echo-OS**
+- Navigation: Breadcrumbs accurate, view mode switching functional (Dashboard/Timeline/List)
+- Validation: Git correlation, test discovery, evidence badges all functional
+- AI Coach: Chat loads, streaming works, project-aware responses accurate
+- Actions: Command copy works, workflow history displayed, gap detection functional
+- Manual refresh completes in <300ms
+- Baseline Documentation feature checklist shows 100% pass rate for Echo-OS
+
+**Evidence 3: Multi-Project Compatibility Matrix Delivered**
+- File exists: `docs/validation/multi-project-compatibility-matrix.md`
+- Matrix compares BMAD Dash vs Echo-OS: parser, phase detection, Git correlation, test discovery, cache, AI context, error handling
+- Matrix shows 100% feature parity
+- Matrix documents validated variations (story ID formats, file naming, YAML structures)
+
+**Evidence 4: Zero Critical Parser Errors**
+- Echo-OS parses without crashes or 500 errors
+- All 7 Parser Audit Report assumptions validated/fixed
+- Warnings acceptable if gracefully handled with "Unknown" states
+- Updated Parser Audit Report includes "✅ Validated on Echo-OS" annotations
+
+**Evidence 5: Regression Prevention**
+- All 272 existing tests pass (BMAD Dash project still works)
+- BMAD Dash dashboard still loads correctly at localhost:5000
+- New multi-project tests added (5-10 tests minimum)
