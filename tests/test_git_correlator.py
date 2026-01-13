@@ -11,7 +11,7 @@ from backend.models.git_evidence import GitCommit
 
 class TestGitCorrelator:
     """Test suite for GitCorrelator class"""
-    story_id = "5.4"
+    story_id="5.4"
     
     def test_init_with_valid_repo(self):
         """Test GitCorrelator initializes with valid repo path"""
