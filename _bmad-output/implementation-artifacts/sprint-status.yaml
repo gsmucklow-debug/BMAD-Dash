@@ -32,9 +32,9 @@ development_status:
   epic-3-retrospective: done
   epic-4: done
   epic-4-retrospective: done
-  epic-5: in-progress
+  epic-5: done
   epic-5-retrospective: done
-generated: 2026-01-09
+generated: 2026-01-13
 project: BMAD Dash
 project_key: bmad-dash
 story_location: _bmad-output/implementation-artifacts
