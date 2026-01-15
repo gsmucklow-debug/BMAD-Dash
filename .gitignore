@@ -40,3 +40,6 @@ _bmad-output/implementation-artifacts/project-state.json
 
 # SmartCache (Story 5.55: Smart Per-Project Cache Layer)
 .bmad-cache/
+
+# Git worktrees (isolated development branches)
+.worktrees/

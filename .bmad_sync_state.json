@@ -1,12 +1,12 @@
 {
-  "last_check": "2026-01-13T00:22:48.061265",
-  "current_version": "latest",
+  "last_check": "2026-01-15T07:55:41.972246",
+  "current_version": "5.16.6",
   "last_seen": "2026-01-12T23:07:16.629044",
-  "etag": "W/\"6964e39a-10659\"",
+  "etag": "W/\"69688002-10659\"",
   "last_docs_info": {
     "version": "5.16.6",
-    "last_modified": "Mon, 12 Jan 2026 12:05:46 GMT",
+    "last_modified": "Thu, 15 Jan 2026 05:49:54 GMT",
     "url": "http://docs.bmad-method.org"
   },
-  "last_updated": "2026-01-13T00:23:42.793507"
+  "last_updated": "2026-01-15T07:57:14.751419"
 }

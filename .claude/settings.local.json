@@ -30,7 +30,11 @@
       "Bash(findstr:*)",
       "Bash(git push:*)",
       "Skill(superpowers:brainstorming)",
-      "Skill(superpowers:brainstorming:*)"
+      "Skill(superpowers:brainstorming:*)",
+      "Skill(bmad:bmm:workflows:retrospective)",
+      "Skill(bmad:bmm:workflows:retrospective:*)",
+      "Skill(superpowers:using-git-worktrees)",
+      "Skill(superpowers:using-git-worktrees:*)"
     ]
   }
 }

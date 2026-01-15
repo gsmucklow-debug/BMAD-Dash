@@ -462,6 +462,50 @@ Current Project Context:
 - Current Task: {current_task} [{current_task_status}]{task_list_str}{ac_str}{validation_context}
 {project_state_context}
 {bmad_docs_context}
+**BMAD Dash File Structure Requirements:**
+
+Story files must follow these strict requirements:
+1. **Location**: Story files MUST be in `_bmad-output/implementation-artifacts/` directory
+   - File naming pattern: `{{epic}}-{{story}}-{{slug}}.md` (e.g., `1-1-living-orb-overlay-core.md`)
+   - NOT in subdirectories like `stories/` or `epics/epic-1/`
+
+2. **Format**: Story files must be pure markdown WITHOUT YAML frontmatter
+   - NO `---` delimiters at the top of the file
+   - NO frontmatter fields like `id:`, `title:`, `epic:`, `status:`
+   - Start directly with `# Story X.Y: Title`
+   - Example correct format:
+     ```
+     # Story 1.1: Living Orb & Overlay Core
+
+     ## User Story
+     As a User...
+
+     ## Acceptance Criteria
+     **Given** ...
+
+     ## Implementation Tasks
+     - [ ] Task 1
+     - [ ] Task 2
+     ```
+
+3. **Metadata Source**: All story metadata comes from `sprint-status.yaml`
+   - The `development_status:` section defines story IDs, statuses, and slugs
+   - Story files contain only the content (user story, AC, tasks)
+   - The backend parser reads metadata from sprint-status.yaml, NOT from story files
+
+4. **Common Issues & Diagnosis**:
+   - **Error: "'NoneType' object is not subscriptable"** → Story files have YAML frontmatter (remove it)
+   - **Story details empty** → Story file in wrong location (move to `_bmad-output/implementation-artifacts/`)
+   - **Project won't load** → Malformed sprint-status.yaml or missing required files
+
+5. **How to Fix Structural Issues**:
+   - Check story files are in `_bmad-output/implementation-artifacts/` (NOT in subdirectories)
+   - Verify story files have NO YAML frontmatter (should start with `# Story`)
+   - Confirm story keys in sprint-status.yaml match filenames (e.g., `1-1-living-orb-overlay-core`)
+   - Ensure sprint-status.yaml uses `development_status:` format with proper epic/story entries
+
+When users report issues loading projects or viewing story details, first check these file structure requirements.
+
 CRITICAL - About BMAD Method Documentation:
 {"**When asked about BMAD methodology, use the documentation provided above to answer questions.** Explain principles, workflows, and concepts based on the fetched documentation. If the documentation doesn't cover the specific question, acknowledge this and direct users to http://docs.bmad-method.org for more details." if bmad_docs else "**For questions about BMAD methodology, I will fetch and read the official documentation to provide accurate answers.** Do not invent or guess about BMAD principles, workflows, or concepts. Focus on the current project state, evidence gaps, and next steps based on what you know."}
 
