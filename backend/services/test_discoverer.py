@@ -57,6 +57,8 @@ class TestDiscoverer:
             os.path.join(self.project_path, "tests"),
             os.path.join(self.project_path, "backend", "tests"),
             os.path.join(self.project_path, "frontend", "tests"),
+            # Support colocated tests (Vite/React convention: tests next to source files)
+            os.path.join(self.project_path, "src"),
         ]
         
         matching_files = []
@@ -107,8 +109,8 @@ class TestDiscoverer:
                 except Exception as e:
                     logger.warning(f"Could not read test file {file_path}: {e}")
             
-            # Also check JavaScript/TypeScript test files
-            for ext in ['*.test.js', '*.test.ts', '*.spec.js', '*.spec.ts']:
+            # Also check JavaScript/TypeScript test files (including JSX/TSX)
+            for ext in ['*.test.js', '*.test.ts', '*.test.jsx', '*.test.tsx', '*.spec.js', '*.spec.ts', '*.spec.jsx', '*.spec.tsx']:
                 for test_file in Path(test_dir).rglob(ext):
                     file_path = str(test_file)
                     if file_path in matching_files:
@@ -280,7 +282,7 @@ class TestDiscoverer:
                 # Count "def test_" functions
                 count = len(re.findall(r'^\s*def\s+test_', content, re.MULTILINE))
                 # Also count class-based tests if needed (usually handled by def test_ inside class)
-            elif test_file_path.endswith('.js') or test_file_path.endswith('.ts'):
+            elif any(test_file_path.endswith(ext) for ext in ['.js', '.ts', '.jsx', '.tsx']):
                 # Count "it(", "test(", "describe(" blocks? usually just it/test
                 count = len(re.findall(r'(?:it|test)\s*\(', content))
                 
