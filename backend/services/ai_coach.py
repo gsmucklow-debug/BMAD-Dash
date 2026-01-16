@@ -381,6 +381,20 @@ class AICoach:
                 if state:
                     project_state_context = f"\n\nPROJECT STATE SUMMARY:\n{self.project_state_cache.summarize_for_ai()}"
                     logger.info(f"AI Coach injected summary size: {len(project_state_context)} chars")
+
+                    # Check workflow validation status
+                    workflow_val = state.workflow_validation
+                    if workflow_val and not workflow_val.get('is_valid', True):
+                        errors = workflow_val.get('errors', [])
+                        suggestions = workflow_val.get('suggestions', [])
+                        project_state_context += "\n\n⚠️ WORKFLOW STATUS FILE ISSUE DETECTED:\n"
+                        project_state_context += "The bmm-workflow-status.yaml file is malformed or missing.\n"
+                        if errors:
+                            project_state_context += f"Errors: {', '.join(errors)}\n"
+                        if suggestions:
+                            project_state_context += f"Suggestions: {', '.join(suggestions)}\n"
+                        project_state_context += "\n**ACTION REQUIRED:** You should proactively inform the user about this issue "
+                        project_state_context += "and suggest running /bmad:bmm:workflows:workflow-init to fix it."
             except Exception as e:
                 logger.error(f"AI Coach failed to load project state: {e}")
                 project_state_context = f"\n\nProject State Error: {str(e)}"

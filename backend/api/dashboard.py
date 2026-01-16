@@ -120,7 +120,11 @@ def get_dashboard():
     cache_stats = state_cache.get_cache_stats()
     if cache_stats:
         response["smart_cache"] = cache_stats
-    
+
+    # Add workflow validation status (Story 7.1)
+    if state.workflow_validation:
+        response["workflow_validation"] = state.workflow_validation
+
     return jsonify(response), 200
 
 def sort_story_key(story_id):

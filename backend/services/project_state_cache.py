@@ -140,18 +140,30 @@ class ProjectStateCache:
             ProjectState with all stories and their evidence
         """
         logger.info("Bootstrapping project state...")
-        
+
         # We perform lazy import to avoid circular dependencies
         from ..parsers.bmad_parser import BMADParser
         from ..services.git_correlator import GitCorrelator
         from ..services.test_discoverer import TestDiscoverer
+        from ..services.workflow_status_validator import WorkflowStatusValidator
         
         parser = BMADParser(project_root)
         project_model = parser.parse_project()
-        
+
+        # Validate workflow-status file
+        validator = WorkflowStatusValidator(project_root)
+        workflow_validation = validator.validate()
+
+        # Log validation warnings/errors
+        if not workflow_validation.is_valid:
+            logger.warning(f"Workflow status validation failed: {workflow_validation.errors}")
+            logger.info(f"Suggestions: {workflow_validation.suggestions}")
+        elif workflow_validation.warnings:
+            logger.warning(f"Workflow status warnings: {workflow_validation.warnings}")
+
         epics = {}
         stories = {}
-        
+
         # Populate epics and stories from parser result
         if project_model:
             for epic in project_model.epics:
@@ -297,10 +309,11 @@ class ProjectStateCache:
                 "phase": project_model.phase if project_model else "Implementation",
                 "root": project_root
             },
-            current={}, 
+            current={},
             epics=epics,
             stories=stories,
-            version="1.0"
+            version="1.0",
+            workflow_validation=workflow_validation.to_dict()
         )
         
         # Save SmartCache at the end of bootstrap (much faster)

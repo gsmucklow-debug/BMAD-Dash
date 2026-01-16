@@ -17,6 +17,7 @@ class ProjectState:
     epics: Dict[str, Epic] = field(default_factory=dict)
     stories: Dict[str, Story] = field(default_factory=dict)
     version: str = "1.0"
+    workflow_validation: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize complete project state to dictionary"""
@@ -25,7 +26,8 @@ class ProjectState:
             "project": self.project,
             "current": self.current,
             "epics": {k: v.to_dict() if hasattr(v, 'to_dict') else v for k, v in self.epics.items()},
-            "stories": {k: v.to_dict() if hasattr(v, 'to_dict') else v for k, v in self.stories.items()}
+            "stories": {k: v.to_dict() if hasattr(v, 'to_dict') else v for k, v in self.stories.items()},
+            "workflow_validation": self.workflow_validation
         }
 
     @classmethod
@@ -54,5 +56,6 @@ class ProjectState:
             current=data.get("current", {}),
             epics=epics,
             stories=stories,
-            version=data.get("version", "1.0")
+            version=data.get("version", "1.0"),
+            workflow_validation=data.get("workflow_validation", {})
         )
