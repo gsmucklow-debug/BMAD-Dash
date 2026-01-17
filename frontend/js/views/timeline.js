@@ -95,7 +95,7 @@ function getTimelineEvents(stories) {
         if (dateA > dateB) return -1;
         if (dateA < dateB) return 1;
 
-        // If dates are equal, sort by Story ID numerically (0.1, 1.1, 1.2, etc.)
+        // If dates are equal, sort by Story ID descending (higher ID = more recent = at top)
         const parseStoryId = (storyId) => {
             const parts = (storyId || "0.0").split('.');
             const major = parseInt(parts[0]) || 0;
@@ -106,9 +106,9 @@ function getTimelineEvents(stories) {
         const [majorA, minorA] = parseStoryId(a.storyId);
         const [majorB, minorB] = parseStoryId(b.storyId);
 
-        // Numeric comparison: 0.1 < 1.1 < 1.2 < 5.5 < 5.55 < 5.6 < 5.7
-        if (majorA !== majorB) return majorA - majorB;
-        return minorA - minorB;
+        // Descending comparison: 5.7 > 5.6 > 5.55 > 5.5 > 1.2 > 1.1 > 0.1
+        if (majorA !== majorB) return majorB - majorA;
+        return minorB - minorA;
     });
 
     return events;

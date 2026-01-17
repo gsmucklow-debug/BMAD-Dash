@@ -13,8 +13,12 @@ import { GapWarning } from './components/gap-warning.js';
 import { render as renderDashboard } from './views/dashboard.js';
 import { render as renderTimeline } from './views/timeline.js';
 import { render as renderList } from './views/list.js';
+import { API } from './api.js';
 
 const DEFAULT_PROJECT_ROOT = '';
+
+// Initialize global API client for components that need it
+window.bmadApi = new API();
 
 // Global state
 let router = null;
@@ -192,15 +196,18 @@ async function fetchDashboardData(projectRoot) {
  * Show loading indicator
  */
 function showLoading() {
-    document.getElementById('loading').classList.remove('hidden');
-    document.getElementById('error').classList.add('hidden');
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    if (loading) loading.classList.remove('hidden');
+    if (error) error.classList.add('hidden');
 }
 
 /**
  * Hide loading indicator
  */
 function hideLoading() {
-    document.getElementById('loading').classList.add('hidden');
+    const loading = document.getElementById('loading');
+    if (loading) loading.classList.add('hidden');
 }
 
 /**

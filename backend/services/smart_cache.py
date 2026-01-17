@@ -47,7 +47,7 @@ class SmartCache:
     }
     """
     
-    CACHE_VERSION = "1"
+    CACHE_VERSION = "2"  # Bumped: Added Rust test discovery support
     CACHE_DIR = ".bmad-cache"
     CACHE_FILE = "stories.json"
     LOCK_FILE = "stories.json.lock"
