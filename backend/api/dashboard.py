@@ -553,7 +553,7 @@ def build_action_card(project) -> Dict[str, Any]:
         if done_stories and len(done_stories) == len(all_stories):
             # All stories complete - suggest retrospective
             action_card["command_layer"] = {
-                "command": "/bmad:bmm:workflows:retrospective",
+                "command": "npx bmad-method run retrospective",
                 "description": "All stories complete - run retrospective"
             }
             # Use most recent completed story for context
@@ -578,7 +578,7 @@ def build_action_card(project) -> Dict[str, Any]:
             if story.status in ["todo", "backlog"]:
                 # Show as "next" not "current" by setting command to create-story
                 action_card["command_layer"] = {
-                    "command": f"/bmad:bmm:workflows:create-story {story.story_id}",
+                    "command": f"npx bmad-method run create-story {story.story_id}",
                     "description": f"Start next story: {story.title}"
                 }
                 action_card["story_layer"] = {
@@ -597,7 +597,7 @@ def build_action_card(project) -> Dict[str, Any]:
         
         # Truly no stories - suggest creating first story
         action_card["command_layer"] = {
-            "command": "/bmad:bmm:workflows:create-story",
+            "command": "npx bmad-method run create-story",
             "description": "No active stories - create first story"
         }
         return action_card
@@ -658,13 +658,13 @@ def build_action_card(project) -> Dict[str, Any]:
         command_description = ""
         
         if current_story.status in ["todo", "ready-for-dev"]:
-            command = f"/bmad:bmm:workflows:dev-story {current_story.story_id}"
+            command = f"npx bmad-method run dev-story {current_story.story_id}"
             command_description = "Start or continue development on this story"
         elif current_story.status == "in-progress":
-            command = f"/bmad:bmm:workflows:dev-story {current_story.story_id}"
+            command = f"npx bmad-method run dev-story {current_story.story_id}"
             command_description = "Continue development on this story"
         elif current_story.status == "review":
-            command = f"/bmad:bmm:workflows:code-review {current_story.story_id}"
+            command = f"npx bmad-method run code-review {current_story.story_id}"
             command_description = "Run adversarial code review"
         
         action_card["command_layer"] = {
@@ -674,7 +674,7 @@ def build_action_card(project) -> Dict[str, Any]:
     else:
         # No stories found - suggest creating first story
         action_card["command_layer"] = {
-            "command": "/bmad:bmm:workflows:create-story",
+            "command": "npx bmad-method run create-story",
             "description": "No active stories - create first story"
         }
     

@@ -600,7 +600,7 @@ class BMADParser:
             gaps.append({
                 'type': 'missing-dev-story',
                 'message': '⚠️ Missing: dev-story workflow',
-                'suggested_command': '/bmad:bmm:workflows:dev-story',
+                'suggested_command': 'npx bmad-method run dev-story',
                 'severity': GAP_SEVERITY_HIGH
             })
         
@@ -609,7 +609,7 @@ class BMADParser:
             gaps.append({
                 'type': 'missing-code-review',
                 'message': '⚠️ Missing: code-review workflow',
-                'suggested_command': '/bmad:bmm:workflows:code-review',
+                'suggested_command': 'npx bmad-method run code-review',
                 'severity': GAP_SEVERITY_MEDIUM
             })
         
@@ -623,7 +623,7 @@ class BMADParser:
                 gaps.append({
                     'type': 'test-gap',
                     'message': '⚠️ Critical: No passing tests found',
-                    'suggested_command': '/bmad:bmm:workflows:dev-story',
+                    'suggested_command': 'npx bmad-method run dev-story',
                     'severity': GAP_SEVERITY_HIGH
                 })
         

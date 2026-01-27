@@ -188,7 +188,7 @@ workflow_history:
         assert gap['type'] == 'missing-dev-story', "Gap type should be missing-dev-story"
         assert '⚠️' in gap['message'], "Gap message should contain warning emoji"
         assert 'dev-story' in gap['message'], "Gap message should mention dev-story"
-        assert gap['suggested_command'] == '/bmad:bmm:workflows:dev-story', "Gap should suggest dev-story command"
+        assert gap['suggested_command'] == 'npx bmad-method run dev-story', "Gap should suggest dev-story command"
         assert gap['severity'] == 'high', "Gap severity should be high"
     
     def test_detect_gap_missing_code_review(self):
@@ -228,7 +228,7 @@ workflow_history:
         gap = story.gaps[0]
         assert gap['type'] == 'missing-code-review', "Gap type should be missing-code-review"
         assert 'code-review' in gap['message'], "Gap message should mention code-review"
-        assert gap['suggested_command'] == '/bmad:bmm:workflows:code-review', "Gap should suggest code-review command"
+        assert gap['suggested_command'] == 'npx bmad-method run code-review', "Gap should suggest code-review command"
         assert gap['severity'] == 'medium', "Gap severity should be medium"
     
     def test_no_gaps_when_complete(self):

@@ -33,6 +33,12 @@ class BMADVersionDetector:
         if self._cached_version:
             return self._cached_version
         
+        # Check _bmad/bmm/config.yaml for version (v6+ primary source)
+        version = self._check_bmad_config()
+        if version:
+            self._cached_version = version
+            return version
+        
         # Check sprint-status.yaml for version field
         version = self._check_sprint_status()
         if version:
@@ -54,6 +60,29 @@ class BMADVersionDetector:
         # Default to latest
         self._cached_version = "latest"
         return "latest"
+    
+    def _check_bmad_config(self) -> Optional[str]:
+        """Check _bmad/bmm/config.yaml for version information (v6+ primary source)"""
+        config_path = os.path.join(self.project_root, '_bmad', 'bmm', 'config.yaml')
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    # Look for version in comments (e.g., "# Version: 6.0.0-alpha.22")
+                    import re
+                    version_match = re.search(r'#\s*Version:\s*([\d.]+(?:-[\w.]+)?)', content, re.IGNORECASE)
+                    if version_match:
+                        return version_match.group(1)
+                    
+                    # Also try YAML parsing for bmad_version field
+                    data = yaml.safe_load(content)
+                    if data and 'bmad_version' in data:
+                        return str(data['bmad_version'])
+            except Exception:
+                pass
+        
+        return None
     
     def _check_sprint_status(self) -> Optional[str]:
         """Check sprint-status.yaml for bmad_version field"""

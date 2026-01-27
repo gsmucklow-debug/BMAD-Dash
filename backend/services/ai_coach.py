@@ -186,9 +186,9 @@ class AICoach:
 
             # Add suggested commands (Story 5.3 AC4)
             if not validation_result.has_dev_story_workflow:
-                summary += f"\n**Suggestion**: Run `/bmad:bmm:workflows:dev-story`"
+                summary += f"\n**Suggestion**: Run `npx bmad-method run dev-story`"
             elif not validation_result.has_code_review_workflow:
-                summary += f"\n**Suggestion**: Run `/bmad:bmm:workflows:code-review`"
+                summary += f"\n**Suggestion**: Run `npx bmad-method run code-review`"
 
         return summary
 
@@ -394,7 +394,7 @@ class AICoach:
                         if suggestions:
                             project_state_context += f"Suggestions: {', '.join(suggestions)}\n"
                         project_state_context += "\n**ACTION REQUIRED:** You should proactively inform the user about this issue "
-                        project_state_context += "and suggest running /bmad:bmm:workflows:workflow-init to fix it."
+                        project_state_context += "and suggest running npx bmad-method run workflow-init to fix it."
             except Exception as e:
                 logger.error(f"AI Coach failed to load project state: {e}")
                 project_state_context = f"\n\nProject State Error: {str(e)}"
@@ -539,26 +539,25 @@ Response Guidelines:
 
 BMAD Workflow Suggestions:
 When user asks "What should I do next?", analyze the current story status and suggest:
-- If status is "TODO" or "READY_FOR_DEV" → Suggest: `/bmad:bmm:workflows:dev-story {story_id}`
+- If status is "TODO" or "READY_FOR_DEV" → Suggest: `npx bmad-method run dev-story {story_id}`
   Explanation: "Start development on this story by running the dev-story workflow."
 
 - If status is "IN_PROGRESS" → Check progress:
   - If tasks incomplete → Suggest: "Continue implementing the remaining tasks"
-  - If tasks complete → Suggest: `/bmad:bmm:workflows:code-review {story_id}`
+  - If tasks complete → Suggest: `npx bmad-method run code-review {story_id}`
   Explanation: "Run the code-review workflow to validate your implementation."
 
-- If status is "REVIEW" → Suggest: `/bmad:bmm:workflows:code-review {story_id}`
+- If status is "REVIEW" → Suggest: `npx bmad-method run code-review {story_id}`
   Explanation: "Run the adversarial code review to find and fix any issues."
 
 - If status is "DONE" or "COMPLETE" → Suggest creating the next story or retrospective
   Explanation: "This story is complete. Consider creating the next story or running a retrospective."
 
-When providing workflow commands, always format them with colons (NOT hyphens):
 ```
-/bmad:bmm:workflows:[workflow-name] [story-id]
+npx bmad-method run [workflow-name] [story-id]
 ```
 
-CRITICAL: Use colons (:) not hyphens (-) in workflow commands!
+CRITICAL: Use CLI format for universal compatibility!
 
 When validating agent work:
 - Check Git commits exist for the story

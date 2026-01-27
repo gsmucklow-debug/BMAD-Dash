@@ -34,7 +34,17 @@
       "Skill(bmad:bmm:workflows:retrospective)",
       "Skill(bmad:bmm:workflows:retrospective:*)",
       "Skill(superpowers:using-git-worktrees)",
-      "Skill(superpowers:using-git-worktrees:*)"
+      "Skill(superpowers:using-git-worktrees:*)",
+      "Bash(git worktree add:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test)",
+      "Bash(npm run:*)",
+      "Skill(bmad:bmm:workflows:testarch-automate)",
+      "Skill(bmad:bmm:workflows:testarch-automate:*)",
+      "Bash(set:*)",
+      "Bash(fc /b \"f:\\\\BMAD Dash\\\\_bmad\\\\bmm\\\\workflows\\\\4-implementation\\\\dev-story\\\\instructions.xml\" \"f:\\\\echo-os\\\\_bmad\\\\bmm\\\\workflows\\\\4-implementation\\\\dev-story\\\\instructions.xml\")",
+      "Bash(powershell:*)"
     ]
   }
 }

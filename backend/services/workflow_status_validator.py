@@ -76,7 +76,7 @@ class WorkflowStatusValidator:
 
         if not workflow_file:
             errors.append("No bmm-workflow-status.yaml file found")
-            suggestions.append("Run /bmad:bmm:workflows:workflow-init to initialize project tracking")
+            suggestions.append("Run npx bmad-method run workflow-init to initialize project tracking")
             return WorkflowStatusValidation(
                 is_valid=False,
                 errors=errors,
@@ -110,7 +110,7 @@ class WorkflowStatusValidator:
 
         if not isinstance(data, dict):
             errors.append("Workflow status file must be a YAML dictionary")
-            suggestions.append("Run /bmad:bmm:workflows:workflow-init to regenerate the file")
+            suggestions.append("Run npx bmad-method run workflow-init to regenerate the file")
             return WorkflowStatusValidation(
                 is_valid=False,
                 errors=errors,
@@ -128,7 +128,7 @@ class WorkflowStatusValidator:
         if missing_fields:
             errors.append(f"Missing required fields: {', '.join(missing_fields)}")
             suggestions.append("This file appears to be malformed or outdated")
-            suggestions.append("Run /bmad:bmm:workflows:workflow-init to regenerate the file")
+            suggestions.append("Run npx bmad-method run workflow-init to regenerate the file")
 
         # Validate field values
         if "project_type" in data and data["project_type"] not in self.VALID_PROJECT_TYPES:
@@ -184,7 +184,7 @@ class WorkflowStatusValidator:
         # Add helpful suggestions if invalid
         if not is_valid:
             if not suggestions:
-                suggestions.append("Run /bmad:bmm:workflows:workflow-init to fix this file")
+                suggestions.append("Run npx bmad-method run workflow-init to fix this file")
 
         return WorkflowStatusValidation(
             is_valid=is_valid,
